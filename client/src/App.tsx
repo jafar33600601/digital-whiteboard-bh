@@ -5,33 +5,82 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import TeacherBoard from "./pages/TeacherBoard";
+import TeacherDashboard from "./pages/TeacherDashboard";
+import StudentBoard from "./pages/StudentBoard";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
+
+function TeacherBoardRoute() {
+  const params = new URLSearchParams(window.location.search);
+  const pathParts = window.location.pathname.split("/");
+  const sessionId = parseInt(pathParts[pathParts.length - 1] || "0");
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    window.location.href = getLoginUrl();
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50" dir="rtl">
+      <TeacherBoard sessionId={sessionId} />
+    </div>
+  );
+}
+
+function TeacherDashboardRoute() {
+  const pathParts = window.location.pathname.split("/");
+  const sessionId = parseInt(pathParts[pathParts.length - 1] || "0");
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" dir="rtl">
+        <div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    window.location.href = getLoginUrl();
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50" dir="rtl">
+      <TeacherDashboard />
+    </div>
+  );
+}
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
+      <Route path="/" component={Home} />
+      <Route path="/teacher/:sessionId" component={TeacherBoardRoute} />
+      <Route path="/dashboard/:sessionId" component={TeacherDashboardRoute} />
+      <Route path="/join/:shareCode" component={StudentBoard} />
+      <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
+          <Toaster position="top-center" richColors />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `student_submissions` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`sessionId` int NOT NULL,\n\t`studentName` varchar(255) NOT NULL,\n\t`canvasData` longtext,\n\t`correctionData` longtext,\n\t`status` enum('pending','submitted','corrected') NOT NULL DEFAULT 'pending',\n\t`submittedAt` timestamp,\n\t`correctedAt` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `student_submissions_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2awLMqTJ8fQhqeP.95caa43edd78 --database k9iy4r77CzdDvrofniax4Z --execute CREATE TABLE `student_submissions` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`sessionId` int NOT NULL,\n\t`studentName` varchar(255) NOT NULL,\n\t`canvasData` longtext,\n\t`correctionData` longtext,\n\t`status` enum('pending','submitted','corrected') NOT NULL DEFAULT 'pending',\n\t`submittedAt` timestamp,\n\t`correctedAt` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `student_submissions_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1747
+}
