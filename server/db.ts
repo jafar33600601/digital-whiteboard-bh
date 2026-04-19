@@ -151,3 +151,12 @@ export async function updateSubmissionCorrection(id: number, correctionData: str
     correctedAt: new Date(),
   }).where(eq(studentSubmissions.id, id));
 }
+
+export async function deleteSession(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // حذف جميع إجابات الطلاب أولاً
+  await db.delete(studentSubmissions).where(eq(studentSubmissions.sessionId, id));
+  // ثم حذف الجلسة
+  await db.delete(whiteboardSessions).where(eq(whiteboardSessions.id, id));
+}

@@ -17,6 +17,7 @@ import {
   getSubmissionById,
   updateSubmissionCanvas,
   updateSubmissionCorrection,
+  deleteSession,
 } from "./db";
 
 export const appRouter = router({
@@ -83,6 +84,17 @@ export const appRouter = router({
         if (!session) throw new TRPCError({ code: "NOT_FOUND" });
         if (session.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
         await updateSessionCanvas(input.sessionId, input.canvasData);
+        return { success: true };
+      }),
+
+    // حذف الجلسة وجميع إجابات طلابها
+    deleteSession: protectedProcedure
+      .input(z.object({ sessionId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const session = await getSessionById(input.sessionId);
+        if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+        if (session.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        await deleteSession(input.sessionId);
         return { success: true };
       }),
 

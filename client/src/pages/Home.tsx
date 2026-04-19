@@ -11,11 +11,14 @@ export default function Home() {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: sessions, isLoading: loadingSessions, refetch } =
     trpc.whiteboard.getMySessions.useQuery(undefined, { enabled: isAuthenticated });
 
   const createSessionMutation = trpc.whiteboard.createSession.useMutation();
+  const deleteSessionMutation = trpc.whiteboard.deleteSession.useMutation();
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +35,21 @@ export default function Home() {
       toast.error("حدث خطأ أثناء إنشاء السبورة");
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    if (!deleteConfirm) return;
+    setIsDeleting(true);
+    try {
+      await deleteSessionMutation.mutateAsync({ sessionId: deleteConfirm.id });
+      toast.success("تم حذف السبورة بنجاح");
+      setDeleteConfirm(null);
+      refetch();
+    } catch {
+      toast.error("حدث خطأ أثناء حذف السبورة");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -227,6 +245,56 @@ export default function Home() {
             </div>
           )}
 
+          {/* نافذة تأكيد الحذف */}
+          {deleteConfirm && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div className="bg-gradient-to-l from-red-500 to-rose-600 p-6 text-white">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                    </svg>
+                  </div>
+                  <h2 className="text-xl font-bold">حذف السبورة</h2>
+                  <p className="text-red-100 text-sm mt-1">هذا الإجراء لا يمكن التراجع عنه</p>
+                </div>
+                <div className="p-6">
+                  <p className="text-slate-700 font-medium mb-1">هل أنت متأكد من حذف:</p>
+                  <p className="text-slate-900 font-bold text-lg mb-4">"{deleteConfirm.title}"</p>
+                  <p className="text-slate-500 text-sm mb-6">
+                    سيتم حذف السبورة وجميع إجابات الطلاب المرتبطة بها نهائياً.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleDeleteSession}
+                      disabled={isDeleting}
+                      className="flex-1 py-3 bg-gradient-to-l from-red-500 to-rose-600 text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isDeleting ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                      )}
+                      {isDeleting ? "جاري الحذف..." : "نعم، احذف"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm(null)}
+                      disabled={isDeleting}
+                      className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition-colors"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* قائمة السبورات */}
           {loadingSessions ? (
             <div className="flex items-center justify-center py-16">
@@ -260,18 +328,33 @@ export default function Home() {
                 >
                   <div className="bg-gradient-to-l from-indigo-500/10 to-purple-500/10 p-5 border-b border-slate-100">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                          <rect x="2" y="3" width="20" height="14" rx="2" />
-                        </svg>
+                      <div className="flex items-center gap-2">
+                        {/* زر الحذف */}
+                        <button
+                          onClick={() => setDeleteConfirm({ id: session.id, title: session.title })}
+                          title="حذف السبورة"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                          </svg>
+                        </button>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-slate-800 truncate">{session.title}</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {new Date(session.createdAt).toLocaleDateString("ar-SA", {
-                            year: "numeric", month: "short", day: "numeric"
-                          })}
-                        </p>
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 text-right">
+                          <h3 className="font-bold text-slate-800 truncate">{session.title}</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {new Date(session.createdAt).toLocaleDateString("ar-SA", {
+                              year: "numeric", month: "short", day: "numeric"
+                            })}
+                          </p>
+                        </div>
+                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                            <rect x="2" y="3" width="20" height="14" rx="2" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
                   </div>

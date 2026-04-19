@@ -5,6 +5,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import WhiteboardCanvas, { type WhiteboardCanvasRef } from "@/components/WhiteboardCanvas";
 import type { CanvasElement } from "@/components/WhiteboardCanvas";
 import { toast } from "sonner";
+import { exportSubmissionsToPDF } from "@/lib/exportPDF";
 
 type SubmissionStatus = "pending" | "submitted" | "corrected";
 
@@ -33,6 +34,8 @@ export default function TeacherDashboard() {
   const [starColor, setStarColor] = useState("#f59e0b");
   const [starSize, setStarSize] = useState(48);
   const [showStarPanel, setShowStarPanel] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const [exportProgress, setExportProgress] = useState<{ current: number; total: number } | null>(null);
 
   // للتصحيح المباشر: نحمّل بيانات إجابة الطالب ونسمح للمعلم بالرسم فوقها
   const correctionCanvasRef = useRef<WhiteboardCanvasRef>(null);
@@ -57,6 +60,41 @@ export default function TeacherDashboard() {
     );
 
   const correctMutation = trpc.whiteboard.correctSubmission.useMutation();
+
+  // تصدير جميع الإجابات كـ PDF
+  const handleExportPDF = async () => {
+    if (!submissions || submissions.length === 0) {
+      toast.error("لا توجد إجابات للتصدير");
+      return;
+    }
+    const submitted = submissions.filter(s => s.status !== "pending");
+    if (submitted.length === 0) {
+      toast.error("لا يوجد طلاب أرسلوا إجاباتهم بعد");
+      return;
+    }
+    setIsExportingPDF(true);
+    setExportProgress({ current: 0, total: submitted.length });
+    try {
+      await exportSubmissionsToPDF(
+        session?.title || "سبورة",
+        submissions.map(s => ({
+          id: s.id,
+          studentName: s.studentName,
+          canvasData: s.canvasData ?? null,
+          correctionData: s.correctionData ?? null,
+          status: s.status,
+        })),
+        (current, total) => setExportProgress({ current, total })
+      );
+      toast.success(`تم تصدير ${submitted.length} إجابة بنجاح! 📄`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "حدث خطأ أثناء التصدير";
+      toast.error(msg);
+    } finally {
+      setIsExportingPDF(false);
+      setExportProgress(null);
+    }
+  };
 
   // عند تحديد طالب جديد: نحمّل بياناته في السبورة
   useEffect(() => {
@@ -188,7 +226,32 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* زر تصدير PDF */}
+          <button
+            onClick={handleExportPDF}
+            disabled={isExportingPDF || !submissions || submissions.filter(s => s.status !== "pending").length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-l from-rose-500 to-pink-600 text-white font-bold rounded-xl hover:opacity-90 transition-all disabled:opacity-40 text-sm shadow-sm"
+            title="تصدير جميع الإجابات كـ PDF"
+          >
+            {isExportingPDF ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                {exportProgress ? `${exportProgress.current}/${exportProgress.total}` : "جاري التصدير..."}
+              </>
+            ) : (
+              <>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="12" y1="18" x2="12" y2="12" />
+                  <line x1="9" y1="15" x2="15" y2="15" />
+                </svg>
+                تصدير PDF
+              </>
+            )}
+          </button>
+
           <div className="text-center px-3 py-1 bg-slate-50 rounded-lg border border-slate-200">
             <p className="text-xs text-slate-500">إجمالي</p>
             <p className="text-base font-bold text-slate-800">{submissions?.length || 0}</p>

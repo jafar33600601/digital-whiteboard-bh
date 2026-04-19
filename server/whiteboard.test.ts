@@ -61,6 +61,7 @@ vi.mock("./db", () => ({
   }),
   updateSubmissionCanvas: vi.fn().mockResolvedValue(undefined),
   updateSubmissionCorrection: vi.fn().mockResolvedValue(undefined),
+  deleteSession: vi.fn().mockResolvedValue(undefined),
 }));
 
 function createTeacherCtx(): TrpcContext {
@@ -146,5 +147,36 @@ describe("whiteboard.correctSubmission", () => {
       correctionData: '{"elements":[{"type":"text","x":100,"y":100,"text":"ممتاز!","color":"#16a34a","fontSize":24}],"width":1200,"height":700}',
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("whiteboard.deleteSession", () => {
+  it("يحذف الجلسة وإجابات طلابها بنجاح", async () => {
+    const ctx = createTeacherCtx();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.whiteboard.deleteSession({ sessionId: 1 });
+    expect(result.success).toBe(true);
+  });
+
+  it("يرفض حذف جلسة معلم آخر", async () => {
+    const otherTeacherCtx: TrpcContext = {
+      user: {
+        id: 99,
+        openId: "other-teacher",
+        email: "other@test.com",
+        name: "معلم آخر",
+        loginMethod: "manus",
+        role: "user",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+      req: { protocol: "https", headers: {} } as TrpcContext["req"],
+      res: { clearCookie: vi.fn() } as unknown as TrpcContext["res"],
+    };
+    const caller = appRouter.createCaller(otherTeacherCtx);
+    await expect(
+      caller.whiteboard.deleteSession({ sessionId: 1 })
+    ).rejects.toThrow();
   });
 });
