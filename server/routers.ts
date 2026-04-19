@@ -133,20 +133,26 @@ export const appRouter = router({
 
   // ===== Student Endpoints (عامة) =====
   student: router({
-    // إنشاء إجابة طالب جديدة
+    // إنشاء إجابة طالب جديدة - يُرجع أيضاً بيانات سبورة المعلم كنقطة بداية
     joinSession: publicProcedure
       .input(z.object({ shareCode: z.string(), studentName: z.string().min(1).max(255) }))
       .mutation(async ({ input }) => {
         const session = await getSessionByShareCode(input.shareCode);
         if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "رمز الجلسة غير صحيح" });
+        // نبدأ سبورة الطالب بنفس محتوى سبورة المعلم
         const submission = await createStudentSubmission({
           sessionId: session.id,
           studentName: input.studentName,
-          canvasData: null,
+          canvasData: session.canvasData, // ← نسخ محتوى المعلم
           correctionData: null,
           status: "pending",
         });
-        return { submissionId: submission!.id, sessionId: session.id, sessionTitle: session.title };
+        return {
+          submissionId: submission!.id,
+          sessionId: session.id,
+          sessionTitle: session.title,
+          teacherCanvasData: session.canvasData, // ← إرسال المحتوى للواجهة
+        };
       }),
 
     // حفظ إجابة الطالب

@@ -158,10 +158,31 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
             for (let i = 1; i < el.points.length; i++) ctx.lineTo(el.points[i].x, el.points[i].y);
             ctx.stroke();
           } else if (el.type === "text") {
-            ctx.fillStyle = el.color;
-            ctx.font = `${el.fontSize}px 'Cairo', sans-serif`;
-            ctx.textAlign = "right";
-            ctx.fillText(el.text, el.x, el.y);
+            // للنجوم والـ emoji نستخدم خط emoji مخصص
+            const isEmoji = el.text === "\u2B50" || el.text === "\u2605" || /^[\uD83C-\uDBFF][\uDC00-\uDFFF]+$/.test(el.text);
+            if (isEmoji) {
+              // رسم خلفية ملونة خلف النجمة
+              ctx.font = `${el.fontSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif`;
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              // رسم دائرة ملونة كخلفية
+              ctx.save();
+              ctx.globalAlpha = 0.15;
+              ctx.fillStyle = el.color;
+              ctx.beginPath();
+              ctx.arc(el.x, el.y, el.fontSize * 0.65, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+              ctx.fillStyle = el.color;
+              ctx.fillText(el.text, el.x, el.y);
+              ctx.textBaseline = "alphabetic";
+            } else {
+              ctx.fillStyle = el.color;
+              ctx.font = `${el.fontSize}px 'Cairo', sans-serif`;
+              ctx.textAlign = "right";
+              ctx.textBaseline = "alphabetic";
+              ctx.fillText(el.text, el.x, el.y);
+            }
           } else if (el.type === "image") {
             try {
               const img = await loadImage(el.src);
