@@ -329,6 +329,33 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
           </CardContent>
         </Card>
 
+        {/* ── المراكز الثلاثة بعد كل سؤال ── */}
+        {liveState.participants.length > 0 && (() => {
+          const top3 = [...liveState.participants].sort((a, b) => b.score - a.score).slice(0, 3);
+          const medals = ["🥇", "🥈", "🥉"];
+          const medalColors = [
+            "border-yellow-400 bg-yellow-500/20",
+            "border-gray-300 bg-gray-500/20",
+            "border-orange-400 bg-orange-500/20",
+          ];
+          return (
+            <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
+              <CardContent className="p-4">
+                <h3 className="text-white font-bold text-center mb-3 text-sm">🏆 المراكز الحالية</h3>
+                <div className="flex flex-col gap-2">
+                  {top3.map((p, i) => (
+                    <div key={i} className={`flex items-center gap-3 rounded-xl px-3 py-2 border ${medalColors[i]}`}>
+                      <span className="text-2xl">{medals[i]}</span>
+                      <span className="text-white font-bold flex-1">{p.name}</span>
+                      <span className="text-yellow-300 font-black text-lg">{p.score.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         <Button
           size="lg"
           className="bg-blue-500 hover:bg-blue-400 text-white text-xl py-6 rounded-2xl"

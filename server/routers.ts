@@ -19,6 +19,7 @@ import {
   updateSubmissionCorrection,
   deleteSession,
   deleteAllSessionsByTeacher,
+  setLiveBroadcast,
   createQuiz,
   getQuizByShareCode,
   getQuizById,
@@ -545,6 +546,47 @@ export const appRouter = router({
         if (!session || session.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
         await updateSubmissionCorrection(input.submissionId, input.correctionData);
         return { success: true };
+      }),
+
+    // بدء بث سبورة طالب محدد للفصل
+    startBroadcast: protectedProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const submission = await getSubmissionById(input.submissionId);
+        if (!submission) throw new TRPCError({ code: "NOT_FOUND" });
+        const session = await getSessionById(submission.sessionId);
+        if (!session || session.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        await setLiveBroadcast(session.id, input.submissionId);
+        return { success: true };
+      }),
+
+    // إيقاف البث المباشر
+    stopBroadcast: protectedProcedure
+      .input(z.object({ sessionId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const session = await getSessionById(input.sessionId);
+        if (!session || session.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        await setLiveBroadcast(session.id, null);
+        return { success: true };
+      }),
+
+    // الحصول على حالة البث (للطالب)
+    getBroadcastState: publicProcedure
+      .input(z.object({ sessionId: z.number() }))
+      .query(async ({ input }) => {
+        const session = await getSessionById(input.sessionId);
+        if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+        if (!session.liveSubmissionId) return { isLive: false, submission: null };
+        const submission = await getSubmissionById(session.liveSubmissionId);
+        return {
+          isLive: true,
+          submission: submission ? {
+            id: submission.id,
+            studentName: submission.studentName,
+            canvasData: submission.canvasData,
+            correctionData: submission.correctionData,
+          } : null,
+        };
       }),
   }),
 

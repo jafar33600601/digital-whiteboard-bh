@@ -23,6 +23,8 @@ export const whiteboardSessions = mysqlTable("whiteboard_sessions", {
   title: varchar("title", { length: 255 }).notNull().default("سبورة جديدة"),
   // بيانات السبورة كـ JSON (مسارات الرسم + النصوص)
   canvasData: longtext("canvasData"),
+  // معرف إجابة الطالب المُبث حالياً (null = لا يوجد بث)
+  liveSubmissionId: int("liveSubmissionId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

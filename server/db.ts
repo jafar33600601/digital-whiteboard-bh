@@ -152,6 +152,12 @@ export async function updateSubmissionCorrection(id: number, correctionData: str
   }).where(eq(studentSubmissions.id, id));
 }
 
+export async function setLiveBroadcast(sessionId: number, submissionId: number | null) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(whiteboardSessions).set({ liveSubmissionId: submissionId }).where(eq(whiteboardSessions.id, sessionId));
+}
+
 export async function deleteSession(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");

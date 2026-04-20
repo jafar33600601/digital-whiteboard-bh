@@ -31,6 +31,13 @@ export default function StudentBoard() {
     { enabled: !!submissionId && stage === "submitted", refetchInterval: 8000 }
   );
 
+  // استطلاع البث المباشر (كل 3 ثواني)
+  const [sessionId, setSessionId] = useState<number | null>(null);
+  const { data: broadcastState } = trpc.whiteboard.getBroadcastState.useQuery(
+    { sessionId: sessionId! },
+    { enabled: !!sessionId && stage === "submitted", refetchInterval: 3000 }
+  );
+
   const joinMutation = trpc.student.joinSession.useMutation();
   const submitMutation = trpc.student.submitAnswer.useMutation();
 
@@ -44,6 +51,7 @@ export default function StudentBoard() {
       });
       setSubmissionId(result.submissionId);
       setSessionTitle(result.sessionTitle);
+      setSessionId(result.sessionId);
       // ← سبورة الطالب تبدأ بمحتوى المعلم
       setTeacherCanvasData(result.teacherCanvasData ?? null);
       setStage("working");
@@ -207,6 +215,7 @@ export default function StudentBoard() {
 
   // ── ما بعد الإرسال ─────────────────────────────────────────────────────────
   const hasCorrectionData = !!mySubmission?.correctionData;
+  const isLive = broadcastState?.isLive && broadcastState?.submission;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50" dir="rtl">
@@ -223,14 +232,41 @@ export default function StudentBoard() {
             <p className="text-xs text-emerald-600 font-semibold">تم إرسال إجابتك ✓</p>
           </div>
         </div>
-        <div className={`px-3 py-1.5 rounded-full text-xs font-bold border ${hasCorrectionData ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
-          {hasCorrectionData ? "✓ تم التصحيح" : "⏳ في انتظار التصحيح"}
+        <div className="flex items-center gap-2">
+          {isLive && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full animate-pulse">
+              <div className="w-2 h-2 bg-red-500 rounded-full" />
+              <span className="text-xs font-bold text-red-600">بث مباشر</span>
+            </div>
+          )}
+          <div className={`px-3 py-1.5 rounded-full text-xs font-bold border ${hasCorrectionData ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+            {hasCorrectionData ? "✓ تم التصحيح" : "⏳ في انتظار التصحيح"}
+          </div>
         </div>
       </div>
 
       <div className="flex-1 p-3 flex flex-col gap-3">
+        {/* بث مباشر: عرض سبورة الطالب المُختار */}
+        {isLive && (
+          <div className="bg-white rounded-2xl shadow-md border-2 border-red-300 overflow-hidden flex flex-col">
+            <div className="bg-red-500 px-4 py-2.5 flex items-center gap-2">
+              <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+              <span className="text-sm font-bold text-white">بث مباشر — سبورة: {broadcastState!.submission!.studentName}</span>
+              <span className="text-xs text-red-100 mr-auto">يشاهد المعلم هذه السبورة الآن</span>
+            </div>
+            <div style={{ height: 500 }}>
+              <WhiteboardCanvas
+                readOnly={true}
+                initialData={broadcastState!.submission!.canvasData}
+                overlayData={broadcastState!.submission!.correctionData}
+                bgColor="#ffffff"
+              />
+            </div>
+          </div>
+        )}
+
         {/* رسالة الحالة */}
-        {!hasCorrectionData && (
+        {!hasCorrectionData && !isLive && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
