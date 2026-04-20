@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `quiz_questions` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`quizId` int NOT NULL,\n\t`questionText` text NOT NULL,\n\t`imageUrl` text,\n\t`imageKey` varchar(512),\n\t`options` longtext NOT NULL,\n\t`correctAnswer` int NOT NULL DEFAULT 0,\n\t`questionOrder` int NOT NULL DEFAULT 0,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `quiz_questions_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2awLMqTJ8fQhqeP.95caa43edd78 --database k9iy4r77CzdDvrofniax4Z --execute CREATE TABLE `quiz_questions` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`quizId` int NOT NULL,\n\t`questionText` text NOT NULL,\n\t`imageUrl` text,\n\t`imageKey` varchar(512),\n\t`options` longtext NOT NULL,\n\t`correctAnswer` int NOT NULL DEFAULT 0,\n\t`questionOrder` int NOT NULL DEFAULT 0,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\tCONSTRAINT `quiz_questions_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1610
+}

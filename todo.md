@@ -76,3 +76,20 @@
 - [x] إضافة API deleteSession في الخادم
 - [x] زر حذف السبورة في الصفحة الرئيسية مع تأكيد
 - [x] حذف الجلسة وجميع إجابات الطلاب المرتبطة بها
+
+## نظام الاختبار التفاعلي (اختيار من متعدد)
+- [x] جدول quizzes في قاعدة البيانات (id, title, teacherId, shareCode, createdAt)
+- [x] جدول quiz_questions (id, quizId, questionText, imageUrl, options JSON, correctAnswer, order)
+- [x] جدول quiz_submissions (id, quizId, studentName, answers JSON, score, totalQuestions, submittedAt)
+- [x] API: createQuiz, getQuiz, addQuestion, updateQuestion, deleteQuestion, publishQuiz
+- [x] API: getQuizByCode (للطالب), submitQuizAnswers
+- [x] API: getQuizResults (للمعلم - نتائج فورية)
+- [x] API: deleteQuiz
+- [x] رفع صورة السؤال عبر S3
+- [x] واجهة إنشاء الاختبار (QuizBuilder)
+- [x] واجهة إضافة/تعديل سؤال مع رفع صورة
+- [x] واجهة الطالب للإجابة (QuizStudent)
+- [x] لوحة نتائج المعلم الفورية (QuizResults) مع polling كل 5 ثواني
+- [x] عرض الدرجة والنسبة المئوية لكل طالب
+- [x] زر "اختبار جديد" بجانب "سبورة جديدة" في الصفحة الرئيسية
+- [x] بطاقات الاختبارات في الصفحة الرئيسية مع زر الحذف

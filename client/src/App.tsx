@@ -8,6 +8,9 @@ import Home from "./pages/Home";
 import TeacherBoard from "./pages/TeacherBoard";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import StudentBoard from "./pages/StudentBoard";
+import QuizBuilder from "./pages/QuizBuilder";
+import QuizStudent from "./pages/QuizStudent";
+import QuizResults from "./pages/QuizResults";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 
@@ -62,6 +65,20 @@ function TeacherDashboardRoute() {
   );
 }
 
+function QuizBuilderRoute({ params }: { params?: { id?: string } }) {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
+  if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
+  return <QuizBuilder params={params} />;
+}
+
+function QuizResultsRoute({ params }: { params?: { id?: string } }) {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
+  if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
+  return <QuizResults params={params} />;
+}
+
 function Router() {
   return (
     <Switch>
@@ -69,6 +86,9 @@ function Router() {
       <Route path="/teacher/:sessionId" component={TeacherBoardRoute} />
       <Route path="/dashboard/:sessionId" component={TeacherDashboardRoute} />
       <Route path="/join/:shareCode" component={StudentBoard} />
+      <Route path="/quiz-builder/:id" component={QuizBuilderRoute} />
+      <Route path="/quiz-results/:id" component={QuizResultsRoute} />
+      <Route path="/quiz/:code" component={QuizStudent} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

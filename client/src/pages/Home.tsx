@@ -13,11 +13,55 @@ export default function Home() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; title: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"boards" | "quizzes">("boards");
+  const [showCreateQuizForm, setShowCreateQuizForm] = useState(false);
+  const [newQuizTitle, setNewQuizTitle] = useState("");
+  const [isCreatingQuiz, setIsCreatingQuiz] = useState(false);
+  const [deleteQuizConfirm, setDeleteQuizConfirm] = useState<{ id: number; title: string } | null>(null);
+  const [isDeletingQuiz, setIsDeletingQuiz] = useState(false);
 
   const { data: sessions, isLoading: loadingSessions, refetch } =
     trpc.whiteboard.getMySessions.useQuery(undefined, { enabled: isAuthenticated });
 
+  const { data: quizzes, isLoading: loadingQuizzes, refetch: refetchQuizzes } =
+    trpc.quiz.getMyQuizzes.useQuery(undefined, { enabled: isAuthenticated });
+
   const createSessionMutation = trpc.whiteboard.createSession.useMutation();
+  const createQuizMutation = trpc.quiz.createQuiz.useMutation();
+  const deleteQuizMutation = trpc.quiz.deleteQuiz.useMutation();
+
+  const handleCreateQuiz = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newQuizTitle.trim()) return;
+    setIsCreatingQuiz(true);
+    try {
+      const quiz = await createQuizMutation.mutateAsync({ title: newQuizTitle.trim() });
+      toast.success("تم إنشاء الاختبار بنجاح!");
+      setShowCreateQuizForm(false);
+      setNewQuizTitle("");
+      refetchQuizzes();
+      navigate(`/quiz-builder/${quiz!.id}`);
+    } catch {
+      toast.error("حدث خطأ أثناء إنشاء الاختبار");
+    } finally {
+      setIsCreatingQuiz(false);
+    }
+  };
+
+  const handleDeleteQuiz = async () => {
+    if (!deleteQuizConfirm) return;
+    setIsDeletingQuiz(true);
+    try {
+      await deleteQuizMutation.mutateAsync({ quizId: deleteQuizConfirm.id });
+      toast.success("تم حذف الاختبار بنجاح");
+      setDeleteQuizConfirm(null);
+      refetchQuizzes();
+    } catch {
+      toast.error("حدث خطأ أثناء حذف الاختبار");
+    } finally {
+      setIsDeletingQuiz(false);
+    }
+  };
   const deleteSessionMutation = trpc.whiteboard.deleteSession.useMutation();
 
   const handleCreateSession = async (e: React.FormEvent) => {
@@ -177,22 +221,63 @@ export default function Home() {
         /* لوحة المعلم */
         <div className="max-w-5xl mx-auto px-4 py-8">
           {/* رأس لوحة المعلم */}
-          <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <div>
               <h1 className="text-2xl font-black text-slate-900">
                 مرحباً، {user?.name?.split(" ")[0]} 👋
               </h1>
-              <p className="text-slate-500 mt-1">إدارة سبوراتك الرقمية</p>
+              <p className="text-slate-500 mt-1">إدارة سبوراتك ومنصة الاختبارات</p>
             </div>
 
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-l from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:opacity-90 transition-all hover:shadow-lg hover:shadow-indigo-200 text-sm"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                سبورة جديدة
+              </button>
+              <button
+                onClick={() => setShowCreateQuizForm(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-l from-emerald-600 to-teal-600 text-white font-bold rounded-xl hover:opacity-90 transition-all hover:shadow-lg hover:shadow-emerald-200 text-sm"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                اختبار جديد
+              </button>
+            </div>
+          </div>
+
+          {/* التبويبات */}
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6 w-fit">
             <button
-              onClick={() => setShowCreateForm(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-l from-indigo-600 to-purple-600 text-white font-bold rounded-xl hover:opacity-90 transition-all hover:shadow-lg hover:shadow-indigo-200"
+              onClick={() => setActiveTab("boards")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "boards"
+                  ? "bg-white text-indigo-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              سبورة جديدة
+              🖊️ السبورات
+              {sessions && sessions.length > 0 && (
+                <span className="mr-1.5 bg-indigo-100 text-indigo-600 text-xs px-1.5 py-0.5 rounded-full">{sessions.length}</span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("quizzes")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "quizzes"
+                  ? "bg-white text-emerald-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              📝 الاختبارات
+              {quizzes && quizzes.length > 0 && (
+                <span className="mr-1.5 bg-emerald-100 text-emerald-600 text-xs px-1.5 py-0.5 rounded-full">{quizzes.length}</span>
+              )}
             </button>
           </div>
 
@@ -296,11 +381,12 @@ export default function Home() {
           )}
 
           {/* قائمة السبورات */}
-          {loadingSessions ? (
+          {/* ===== قسم السبورات ===== */}
+          {activeTab === "boards" && loadingSessions ? (
             <div className="flex items-center justify-center py-16">
               <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
             </div>
-          ) : !sessions || sessions.length === 0 ? (
+          ) : activeTab === "boards" && (!sessions || sessions.length === 0) ? (
             <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
               <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5">
@@ -319,9 +405,9 @@ export default function Home() {
                 إنشاء أول سبورة
               </button>
             </div>
-          ) : (
+          ) : activeTab === "boards" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sessions.map(session => (
+              {sessions!.map(session => (
                 <div
                   key={session.id}
                   className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden group"
@@ -381,6 +467,180 @@ export default function Home() {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : null}
+
+          {/* ===== قسم الاختبارات ===== */}
+          {activeTab === "quizzes" && (
+            <>
+              {loadingQuizzes ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full" />
+                </div>
+              ) : !quizzes || quizzes.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                  <div className="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.5">
+                      <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-700 mb-2">لا توجد اختبارات بعد</h3>
+                  <p className="text-slate-500 mb-6">أنشئ أول اختبار تفاعلي لطلابك</p>
+                  <button
+                    onClick={() => setShowCreateQuizForm(true)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-l from-emerald-600 to-teal-600 text-white font-bold rounded-xl hover:opacity-90 transition-opacity"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    إنشاء أول اختبار
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {quizzes.map(quiz => (
+                    <div key={quiz.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden group">
+                      <div className="bg-gradient-to-l from-emerald-500/10 to-teal-500/10 p-5 border-b border-slate-100">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setDeleteQuizConfirm({ id: quiz.id, title: quiz.title })}
+                              title="حذف الاختبار"
+                              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 text-right">
+                              <h3 className="font-bold text-slate-800 truncate">{quiz.title}</h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+                                }`}>
+                                  {quiz.isPublished ? "✓ منشور" : "مسودة"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="p-4 flex gap-2">
+                        <button
+                          onClick={() => navigate(`/quiz-builder/${quiz.id}`)}
+                          className="flex-1 py-2 bg-emerald-50 text-emerald-700 font-semibold rounded-lg text-sm hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                          </svg>
+                          تعديل
+                        </button>
+                        <button
+                          onClick={() => navigate(`/quiz-results/${quiz.id}`)}
+                          className="flex-1 py-2 bg-slate-50 text-slate-700 font-semibold rounded-lg text-sm hover:bg-slate-100 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+                          </svg>
+                          النتائج
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* مودال إنشاء اختبار جديد */}
+          {showCreateQuizForm && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div className="bg-gradient-to-l from-emerald-600 to-teal-600 p-6 text-white">
+                  <h2 className="text-xl font-bold">إنشاء اختبار جديد</h2>
+                  <p className="text-emerald-100 text-sm mt-1">أدخل عنواناً للاختبار</p>
+                </div>
+                <form onSubmit={handleCreateQuiz} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">عنوان الاختبار</label>
+                    <input
+                      type="text"
+                      value={newQuizTitle}
+                      onChange={e => setNewQuizTitle(e.target.value)}
+                      placeholder="مثال: اختبار الفصل الأول - الرياضيات"
+                      required
+                      autoFocus
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-400 transition-colors text-right"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={isCreatingQuiz || !newQuizTitle.trim()}
+                      className="flex-1 py-3 bg-gradient-to-l from-emerald-600 to-teal-600 text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isCreatingQuiz ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                      )}
+                      {isCreatingQuiz ? "جاري الإنشاء..." : "إنشاء الاختبار"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowCreateQuizForm(false); setNewQuizTitle(""); }}
+                      className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition-colors"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* مودال تأكيد حذف الاختبار */}
+          {deleteQuizConfirm && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div className="bg-gradient-to-l from-red-500 to-rose-600 p-6 text-white">
+                  <h2 className="text-xl font-bold">حذف الاختبار</h2>
+                  <p className="text-red-100 text-sm mt-1">هذا الإجراء لا يمكن التراجع عنه</p>
+                </div>
+                <div className="p-6">
+                  <p className="text-slate-700 font-medium mb-1">هل أنت متأكد من حذف:</p>
+                  <p className="text-slate-900 font-bold text-lg mb-4">"{deleteQuizConfirm.title}"</p>
+                  <p className="text-slate-500 text-sm mb-6">سيتم حذف الاختبار وجميع إجابات الطلاب المرتبطة به نهائياً.</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleDeleteQuiz}
+                      disabled={isDeletingQuiz}
+                      className="flex-1 py-3 bg-gradient-to-l from-red-500 to-rose-600 text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isDeletingQuiz ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                      {isDeletingQuiz ? "جاري الحذف..." : "نعم، احذف"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteQuizConfirm(null)}
+                      disabled={isDeletingQuiz}
+                      className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition-colors"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

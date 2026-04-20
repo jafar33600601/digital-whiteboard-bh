@@ -48,3 +48,50 @@ export const studentSubmissions = mysqlTable("student_submissions", {
 
 export type StudentSubmission = typeof studentSubmissions.$inferSelect;
 export type InsertStudentSubmission = typeof studentSubmissions.$inferInsert;
+
+// جدول الاختبارات (اختيار من متعدد)
+export const quizzes = mysqlTable("quizzes", {
+  id: int("id").autoincrement().primaryKey(),
+  shareCode: varchar("shareCode", { length: 32 }).notNull().unique(),
+  teacherId: int("teacherId").notNull(),
+  title: varchar("title", { length: 255 }).notNull().default("اختبار جديد"),
+  isPublished: int("isPublished").default(0).notNull(), // 0=draft, 1=published
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Quiz = typeof quizzes.$inferSelect;
+export type InsertQuiz = typeof quizzes.$inferInsert;
+
+// جدول أسئلة الاختبار
+export const quizQuestions = mysqlTable("quiz_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quizId").notNull(),
+  questionText: text("questionText").notNull(),
+  imageUrl: text("imageUrl"), // رابط الصورة (S3)
+  imageKey: varchar("imageKey", { length: 512 }), // مفتاح S3
+  // options: JSON array of strings e.g. ["A","B","C","D"]
+  options: longtext("options").notNull(),
+  // correctAnswer: index 0-3
+  correctAnswer: int("correctAnswer").notNull().default(0),
+  questionOrder: int("questionOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type QuizQuestion = typeof quizQuestions.$inferSelect;
+export type InsertQuizQuestion = typeof quizQuestions.$inferInsert;
+
+// جدول إجابات الطلاب على الاختبار
+export const quizSubmissions = mysqlTable("quiz_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quizId").notNull(),
+  studentName: varchar("studentName", { length: 255 }).notNull(),
+  // answers: JSON array of selected indices e.g. [0,2,1,3]
+  answers: longtext("answers").notNull(),
+  score: int("score").notNull().default(0),
+  totalQuestions: int("totalQuestions").notNull().default(0),
+  submittedAt: timestamp("submittedAt").defaultNow().notNull(),
+});
+
+export type QuizSubmission = typeof quizSubmissions.$inferSelect;
+export type InsertQuizSubmission = typeof quizSubmissions.$inferInsert;

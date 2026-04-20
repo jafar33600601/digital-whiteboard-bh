@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -155,8 +155,105 @@ export async function updateSubmissionCorrection(id: number, correctionData: str
 export async function deleteSession(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  // حذف جميع إجابات الطلاب أولاً
   await db.delete(studentSubmissions).where(eq(studentSubmissions.sessionId, id));
-  // ثم حذف الجلسة
   await db.delete(whiteboardSessions).where(eq(whiteboardSessions.id, id));
+}
+
+// ===== Quizzes =====
+
+export async function createQuiz(data: InsertQuiz) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(quizzes).values(data);
+  const result = await db.select().from(quizzes).where(eq(quizzes.shareCode, data.shareCode!)).limit(1);
+  return result[0];
+}
+
+export async function getQuizByShareCode(shareCode: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(quizzes).where(eq(quizzes.shareCode, shareCode)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getQuizById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(quizzes).where(eq(quizzes.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getQuizzesByTeacher(teacherId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(quizzes).where(eq(quizzes.teacherId, teacherId)).orderBy(desc(quizzes.createdAt));
+}
+
+export async function updateQuizTitle(id: number, title: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(quizzes).set({ title }).where(eq(quizzes.id, id));
+}
+
+export async function publishQuiz(id: number, publish: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(quizzes).set({ isPublished: publish ? 1 : 0 }).where(eq(quizzes.id, id));
+}
+
+export async function deleteQuiz(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(quizSubmissions).where(eq(quizSubmissions.quizId, id));
+  await db.delete(quizQuestions).where(eq(quizQuestions.quizId, id));
+  await db.delete(quizzes).where(eq(quizzes.id, id));
+}
+
+// ===== Quiz Questions =====
+
+export async function addQuizQuestion(data: InsertQuizQuestion) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(quizQuestions).values(data);
+  const result = await db.select().from(quizQuestions)
+    .where(eq(quizQuestions.quizId, data.quizId))
+    .orderBy(desc(quizQuestions.createdAt))
+    .limit(1);
+  return result[0];
+}
+
+export async function getQuestionsByQuiz(quizId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(quizQuestions)
+    .where(eq(quizQuestions.quizId, quizId))
+    .orderBy(quizQuestions.questionOrder);
+}
+
+export async function updateQuizQuestion(id: number, data: Partial<InsertQuizQuestion>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(quizQuestions).set(data).where(eq(quizQuestions.id, id));
+}
+
+export async function deleteQuizQuestion(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(quizQuestions).where(eq(quizQuestions.id, id));
+}
+
+// ===== Quiz Submissions =====
+
+export async function submitQuizAnswers(data: InsertQuizSubmission) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(quizSubmissions).values(data);
+}
+
+export async function getQuizSubmissions(quizId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(quizSubmissions)
+    .where(eq(quizSubmissions.quizId, quizId))
+    .orderBy(desc(quizSubmissions.submittedAt));
 }
