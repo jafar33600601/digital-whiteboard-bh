@@ -40,13 +40,21 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
   const { data: quiz } = trpc.quiz.getQuizById.useQuery({ id: quizId });
   const { data: liveData, refetch } = trpc.quiz.getLiveState.useQuery(
     { quizId },
-    { refetchInterval: liveState?.state === "waiting" || liveState?.state === "question" ? 2000 : false, enabled: isStarted }
+    { refetchInterval: isStarted ? 2000 : false, enabled: isStarted }
   );
 
   const startLive = trpc.quiz.startLive.useMutation({
-    onSuccess: () => { setIsStarted(true); refetch(); },
+    onSuccess: () => { setIsStarted(true); },
     onError: (e) => toast.error(e.message),
   });
+
+  // تشغيل الجلسة تلقائياً عند فتح الصفحة (مرة واحدة فقط)
+  useEffect(() => {
+    if (quizId && !isStarted) {
+      startLive.mutate({ quizId });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizId]);
   const nextQuestion = trpc.quiz.nextQuestion.useMutation({
     onSuccess: () => refetch(),
     onError: (e) => toast.error(e.message),
@@ -125,25 +133,20 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
   const answeredCount = liveState?.currentAnswers?.length ?? 0;
   const totalParticipants = liveState?.participants?.length ?? 0;
 
-  // لوحة الانتظار
+  // جاري تشغيل الجلسة
   if (!isStarted || !liveState) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex flex-col items-center justify-center gap-8 p-6" dir="rtl">
         <div className="text-center">
-          <div className="text-6xl mb-4">🎮</div>
+          <div className="text-6xl mb-4 animate-bounce">🎮</div>
           <h1 className="text-4xl font-bold text-white mb-2">{quiz.title}</h1>
           <p className="text-blue-200 text-lg">{quiz.questions.length} سؤال</p>
         </div>
-        <Button
-          size="lg"
-          className="bg-green-500 hover:bg-green-400 text-white text-xl px-12 py-6 rounded-2xl shadow-2xl"
-          onClick={() => startLive.mutate({ quizId })}
-          disabled={startLive.isPending}
-        >
-          <Play className="ml-2 w-6 h-6" />
-          {startLive.isPending ? "جاري البدء..." : "بدء الجلسة المباشرة"}
-        </Button>
-        <p className="text-blue-300 text-sm">سيتمكن الطلاب من الانضمام بعد الضغط على بدء</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+          <p className="text-white text-xl">جاري فتح غرفة الانتظار...</p>
+          <p className="text-blue-300 text-sm">يمكن للطلاب الانضمام بالرابط الآن</p>
+        </div>
       </div>
     );
   }

@@ -142,7 +142,12 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
     setShowAddForm(true);
   };
 
-  const shareUrl = quiz ? `${window.location.origin}/quiz/${quiz.shareCode}` : "";
+  const quizMode = (quiz as unknown as { quizMode?: string }).quizMode ?? "normal";
+  const shareUrl = quiz
+    ? quizMode === "live"
+      ? `${window.location.origin}/quiz-join/${quiz.shareCode}`
+      : `${window.location.origin}/quiz/${quiz.shareCode}`
+    : "";
 
   if (!quizId) return <div className="p-8 text-center text-gray-500">اختبار غير موجود</div>;
   if (!quiz) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin w-8 h-8 text-indigo-500" /></div>;
@@ -242,11 +247,13 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                 onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success("تم نسخ الرابط!"); }}>
                 <Copy className="w-4 h-4" />نسخ
               </Button>
-              <Button size="sm" variant="outline" className="gap-1 shrink-0"
-                onClick={() => navigate(`/quiz-results/${quizId}`)}>
-                النتائج
-              </Button>
-              {(quiz as unknown as { quizMode?: string }).quizMode === "live" && (
+              {quizMode === "normal" && (
+                <Button size="sm" variant="outline" className="gap-1 shrink-0"
+                  onClick={() => navigate(`/quiz-results/${quizId}`)}>
+                  النتائج
+                </Button>
+              )}
+              {quizMode === "live" && (
                 <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white gap-1 shrink-0"
                   onClick={() => navigate(`/quiz-live/${quizId}`)}>
                   ▶ ابدأ المباشر
@@ -256,6 +263,11 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
             {!quiz.isPublished && (
               <p className="text-xs text-amber-600 max-w-4xl mx-auto">
                 انشر الاختبار أولاً حتى يتمكن الطلاب من الدخول
+              </p>
+            )}
+            {quizMode === "live" && quiz.isPublished && (
+              <p className="text-xs text-purple-600 max-w-4xl mx-auto">
+                💡 للاختبار المباشر: أرسل الرابط للطلاب أولاً، ثم اضغط "ابدأ المباشر" — سيرى الطلاب شاشة انتظار حتى تبدأ
               </p>
             )}
           </div>

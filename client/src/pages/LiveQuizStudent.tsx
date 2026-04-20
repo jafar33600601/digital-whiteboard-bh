@@ -135,10 +135,14 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
             <Button
               size="lg"
               className="bg-green-500 hover:bg-green-400 text-white"
-              onClick={() => joinLive.mutate({ quizId, studentName: studentName.trim() })}
+              onClick={() => {
+                // تشغيل الموسيقى فور تفاعل المستخدم (متطلب المتصفح)
+                music.playWaiting();
+                joinLive.mutate({ quizId, studentName: studentName.trim() });
+              }}
               disabled={!studentName.trim() || joinLive.isPending}
             >
-              {joinLive.isPending ? "جاري الانضمام..." : "انضم الآن"}
+              {joinLive.isPending ? "جاري الانضمام..." : "انضم الآن 🎵"}
             </Button>
           </CardContent>
         </Card>
