@@ -116,6 +116,8 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
     if (liveState?.state === "results" || liveState?.state === "leaderboard") {
       if (timerRef.current) clearInterval(timerRef.current);
     }
+    // إعادة ضبط شاشة المراكز عند الانتقال لسؤال جديد
+    if (liveState?.state === "question") setShowMidLeaderboard(false);
   }, [liveState?.state, liveState?.currentQuestionIndex]);
 
   useEffect(() => {

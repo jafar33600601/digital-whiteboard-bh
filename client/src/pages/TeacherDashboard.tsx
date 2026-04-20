@@ -9,14 +9,24 @@ import { exportSubmissionsToPDF } from "@/lib/exportPDF";
 
 // مكوّن عرض سبورة الطالب لحظة بلحظة (يستعلم كل ثانيتين)
 function LiveBroadcastCanvas({ submissionId }: { submissionId: number }) {
-  const { data: liveData } = trpc.whiteboard.getLiveCanvas.useQuery(
+  const { data: liveData, dataUpdatedAt } = trpc.whiteboard.getLiveCanvas.useQuery(
     { submissionId },
     { refetchInterval: 2000 }
   );
+  if (!liveData?.canvasData) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-400">
+        <div className="animate-pulse text-4xl">📹</div>
+        <p className="text-sm">ينتظر بدء الطالب بالكتابة...</p>
+      </div>
+    );
+  }
   return (
+    // key=dataUpdatedAt يجبر إعادة mount عند كل تحديث لضمان إعادة رسم السبورة
     <WhiteboardCanvas
+      key={dataUpdatedAt}
       readOnly={true}
-      initialData={liveData?.canvasData ?? null}
+      initialData={liveData.canvasData}
       bgColor="#ffffff"
     />
   );
