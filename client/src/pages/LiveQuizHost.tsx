@@ -64,7 +64,7 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
     onError: (e) => toast.error(e.message),
   });
   const endLive = trpc.quiz.endLive.useMutation({
-    onSuccess: () => { toast.success("انتهت الجلسة المباشرة"); setLocation(`/quiz/${quizId}/results`); },
+    onSuccess: () => { toast.success("انتهت الجلسة المباشرة"); setLocation(`/quiz-results/${quizId}`); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -391,7 +391,7 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
             size="lg"
             variant="outline"
             className="border-white/30 text-white hover:bg-white/10"
-            onClick={() => setLocation(`/quiz/${quizId}/results`)}
+            onClick={() => setLocation(`/quiz-results/${quizId}`)}
           >
             <BarChart3 className="ml-2 w-5 h-5" />
             النتائج التفصيلية
