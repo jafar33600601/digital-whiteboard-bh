@@ -1,11 +1,13 @@
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Trophy, Users, BarChart3, RefreshCw, Loader2, Copy, Share2 } from "lucide-react";
+import { ArrowRight, Trophy, Users, BarChart3, RefreshCw, Loader2, Copy, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
 
 export default function QuizResults({ params }: { params?: { id?: string } }) {
   const [, navigate] = useLocation();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const quizId = params?.id ? parseInt(params.id) : null;
 
   const { data: quiz } = trpc.quiz.getQuizById.useQuery(
@@ -17,9 +19,18 @@ export default function QuizResults({ params }: { params?: { id?: string } }) {
     { quizId: quizId! },
     {
       enabled: !!quizId,
-      refetchInterval: 5000, // تحديث كل 5 ثوانٍ
+      refetchInterval: 5000,
     }
   );
+
+  const deleteSubmissionsMut = trpc.quiz.deleteSubmissions.useMutation({
+    onSuccess: () => {
+      toast.success("تم حذف جميع النتائج بنجاح");
+      setShowDeleteConfirm(false);
+      refetch();
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
 
   if (!quizId) return null;
 
@@ -78,6 +89,14 @@ export default function QuizResults({ params }: { params?: { id?: string } }) {
               <RefreshCw className="w-4 h-4" />
               تحديث
             </Button>
+            {totalStudents > 0 && (
+              <Button variant="outline" size="sm"
+                className="gap-1 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+                onClick={() => setShowDeleteConfirm(true)}>
+                <Trash2 className="w-4 h-4" />
+                حذف النتائج
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -143,21 +162,16 @@ export default function QuizResults({ params }: { params?: { id?: string } }) {
                 .sort((a, b) => b.percentage - a.percentage)
                 .map((r, idx) => (
                   <div key={r.id} className="p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors">
-                    {/* Rank */}
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0
                       ${idx === 0 ? "bg-yellow-100 text-yellow-700" : idx === 1 ? "bg-slate-100 text-slate-600" : idx === 2 ? "bg-amber-100 text-amber-700" : "bg-slate-50 text-slate-400"}`}>
                       {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : idx + 1}
                     </div>
-
-                    {/* Name */}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-800 truncate">{r.studentName}</p>
                       <p className="text-xs text-slate-400">
                         {new Date(r.submittedAt).toLocaleTimeString("ar-SA")}
                       </p>
                     </div>
-
-                    {/* Bar */}
                     <div className="flex-1 hidden md:block">
                       <div className="bg-slate-100 rounded-full h-2.5 overflow-hidden">
                         <div
@@ -166,8 +180,6 @@ export default function QuizResults({ params }: { params?: { id?: string } }) {
                         />
                       </div>
                     </div>
-
-                    {/* Score */}
                     <div className={`px-3 py-1.5 rounded-xl border text-sm font-bold shrink-0 ${getScoreColor(r.percentage)}`}>
                       {getEmoji(r.percentage)} {r.score}/{r.totalQuestions}
                     </div>
@@ -180,6 +192,45 @@ export default function QuizResults({ params }: { params?: { id?: string } }) {
           </div>
         )}
       </div>
+
+      {/* نافذة تأكيد حذف النتائج */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="bg-gradient-to-l from-red-600 to-rose-700 p-6 text-white">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-3">
+                <Trash2 className="w-6 h-6 text-white" />
+              </div>
+              <h2 className="text-xl font-bold">حذف جميع النتائج</h2>
+              <p className="text-red-100 text-sm mt-1">هذا الإجراء لا يمكن التراجع عنه</p>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-700 mb-4">
+                سيتم حذف نتائج <strong>{totalStudents}</strong> طالب من هذا الاختبار نهائياً.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => deleteSubmissionsMut.mutate({ quizId: quizId! })}
+                  disabled={deleteSubmissionsMut.isPending}
+                  className="flex-1 py-3 bg-gradient-to-l from-red-500 to-rose-600 text-white font-bold rounded-xl hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {deleteSubmissionsMut.isPending
+                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> جاري الحذف...</>
+                    : "نعم، احذف النتائج"
+                  }
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleteSubmissionsMut.isPending}
+                  className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
