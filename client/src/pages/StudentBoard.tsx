@@ -169,7 +169,10 @@ export default function StudentBoard() {
 
   // ── العمل على السبورة ──────────────────────────────────────────────────────
   if (stage === "working") {
-    const isWorkingLive = broadcastState?.isLive && broadcastState?.submission;
+    // البث المباشر يظهر فقط للطلاب الآخرين (ليس للطالب المبثوث نفسه)
+    const broadcastedSubmissionId = broadcastState?.submission?.id;
+    const isITheBroadcasted = broadcastedSubmissionId === submissionId;
+    const isWorkingLive = broadcastState?.isLive && broadcastState?.submission && !isITheBroadcasted;
     return (
       <div className="min-h-screen flex flex-col bg-slate-50" dir="rtl">
         {/* شريط العنوان */}
@@ -187,6 +190,12 @@ export default function StudentBoard() {
           </div>
 
           <div className="flex items-center gap-3">
+            {isITheBroadcasted && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full animate-pulse">
+                <div className="w-2 h-2 bg-red-500 rounded-full" />
+                <span className="text-xs font-bold text-red-600">📡 أنت تُبث الآن</span>
+              </div>
+            )}
             {isWorkingLive && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full animate-pulse">
                 <div className="w-2 h-2 bg-red-500 rounded-full" />
