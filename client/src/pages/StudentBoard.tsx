@@ -32,13 +32,13 @@ export default function StudentBoard() {
     { enabled: !!submissionId && stage === "submitted", refetchInterval: 8000 }
   );
 
-  // استطلاع حالة البث (كل 3 ثواني) — فقط أثناء العمل
+  const updateLiveCanvasMut = trpc.whiteboard.updateLiveCanvas.useMutation();
+
+  // استطلاع حالة البث لمعرفة إذا كان هذا الطالب هو المبثوث — كل 3 ثواني
   const { data: broadcastState } = trpc.whiteboard.getBroadcastState.useQuery(
     { sessionId: sessionId! },
     { enabled: !!sessionId && stage === "working", refetchInterval: 3000 }
   );
-
-  const updateLiveCanvasMut = trpc.whiteboard.updateLiveCanvas.useMutation();
 
   // إرسال canvas تلقائياً كل ثانيتين — فقط إذا كان هذا الطالب هو المبثوث
   const amIBroadcasted = broadcastState?.isLive && broadcastState?.submission?.id === submissionId;
@@ -186,13 +186,6 @@ export default function StudentBoard() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* مؤشر البث: يظهر فقط للطالب المبثوث نفسه */}
-            {amIBroadcasted && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full animate-pulse">
-                <div className="w-2 h-2 bg-red-500 rounded-full" />
-                <span className="text-xs font-bold text-red-600">📡 أنت تُبث الآن</span>
-              </div>
-            )}
             <div className="hidden sm:flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />

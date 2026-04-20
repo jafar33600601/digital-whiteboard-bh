@@ -561,7 +561,7 @@ export default function TeacherDashboard() {
 
               {/* ── السبورة الموحدة للتصحيح ── */}
               <div className="flex-1 overflow-y-auto bg-slate-50 p-3">
-                {selectedSubmission?.status === "pending" && !isBroadcasting ? (
+                {selectedSubmission?.status === "pending" && !(broadcastState?.isLive && broadcastState?.submission?.id === selectedSubmissionId) ? (
                   <div className="h-64 flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200">
                     <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mb-4">
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
@@ -571,7 +571,7 @@ export default function TeacherDashboard() {
                     <p className="text-slate-600 font-semibold">الطالب لم يُرسل إجابته بعد</p>
                     <p className="text-slate-400 text-sm mt-1">اضغط "بث مباشر" لمتابعة سبورة الطالب لحظة بلحظة</p>
                   </div>
-                ) : selectedSubmission?.status === "pending" && isBroadcasting ? (
+                ) : selectedSubmission?.status === "pending" && broadcastState?.isLive && broadcastState?.submission?.id === selectedSubmissionId ? (
                   // بث مباشر: عرض سبورة الطالب لحظة بلحظة (من liveCanvasData)
                   <div className="bg-white rounded-2xl border-2 border-red-300 overflow-hidden flex flex-col" style={{ minHeight: 760 }}>
                     <div className="bg-red-500 px-4 py-2.5 flex items-center gap-2 flex-shrink-0">
