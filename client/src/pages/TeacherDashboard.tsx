@@ -48,6 +48,19 @@ export default function TeacherDashboard() {
     { enabled: !!sessionId }
   );
 
+  // مزامنة حالة البث مع الخادم (polling كل 5 ثواني)
+  const { data: broadcastState } = trpc.whiteboard.getBroadcastState.useQuery(
+    { sessionId },
+    { enabled: !!sessionId, refetchInterval: 5000 }
+  );
+
+  // مزامنة حالة البث مع الخادم
+  useEffect(() => {
+    if (broadcastState !== undefined) {
+      setIsBroadcasting(broadcastState.isLive);
+    }
+  }, [broadcastState?.isLive]);
+
   const { data: submissions, isLoading: loadingSubmissions, refetch: refetchSubmissions } =
     trpc.whiteboard.getSubmissions.useQuery(
       { sessionId },

@@ -31,11 +31,11 @@ export default function StudentBoard() {
     { enabled: !!submissionId && stage === "submitted", refetchInterval: 8000 }
   );
 
-  // استطلاع البث المباشر (كل 3 ثواني)
+  // استطلاع البث المباشر (كل 3 ثواني) - يعمل في جميع المراحل بعد الانضمام
   const [sessionId, setSessionId] = useState<number | null>(null);
   const { data: broadcastState } = trpc.whiteboard.getBroadcastState.useQuery(
     { sessionId: sessionId! },
-    { enabled: !!sessionId && stage === "submitted", refetchInterval: 3000 }
+    { enabled: !!sessionId && stage !== "enter-name", refetchInterval: 3000 }
   );
 
   const joinMutation = trpc.student.joinSession.useMutation();
@@ -156,6 +156,7 @@ export default function StudentBoard() {
 
   // ── العمل على السبورة ──────────────────────────────────────────────────────
   if (stage === "working") {
+    const isWorkingLive = broadcastState?.isLive && broadcastState?.submission;
     return (
       <div className="min-h-screen flex flex-col bg-slate-50" dir="rtl">
         {/* شريط العنوان */}
@@ -173,6 +174,12 @@ export default function StudentBoard() {
           </div>
 
           <div className="flex items-center gap-3">
+            {isWorkingLive && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full animate-pulse">
+                <div className="w-2 h-2 bg-red-500 rounded-full" />
+                <span className="text-xs font-bold text-red-600">بث مباشر</span>
+              </div>
+            )}
             <div className="hidden sm:flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
@@ -196,6 +203,24 @@ export default function StudentBoard() {
             </button>
           </div>
         </div>
+
+        {/* بث مباشر أثناء العمل */}
+        {isWorkingLive && (
+          <div className="mx-3 mt-3 bg-white rounded-2xl shadow-md border-2 border-red-300 overflow-hidden">
+            <div className="bg-red-500 px-4 py-2.5 flex items-center gap-2">
+              <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+              <span className="text-sm font-bold text-white">بث مباشر — سبورة: {broadcastState!.submission!.studentName}</span>
+            </div>
+            <div style={{ height: 400 }}>
+              <WhiteboardCanvas
+                readOnly={true}
+                initialData={broadcastState!.submission!.canvasData}
+                overlayData={broadcastState!.submission!.correctionData}
+                bgColor="#ffffff"
+              />
+            </div>
+          </div>
+        )}
 
         {/* السبورة الموحدة: محتوى المعلم + إجابة الطالب فوقها */}
         <div className="flex-1 p-3">
