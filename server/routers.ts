@@ -20,6 +20,7 @@ import {
   deleteSession,
   deleteAllSessionsByTeacher,
   setLiveBroadcast,
+  updateLiveCanvasData,
   createQuiz,
   getQuizByShareCode,
   getQuizById,
@@ -583,9 +584,30 @@ export const appRouter = router({
           submission: submission ? {
             id: submission.id,
             studentName: submission.studentName,
-            canvasData: submission.canvasData,
+            // أولوية liveCanvasData (بث لحظي) ثم canvasData (إرسال رسمي)
+            canvasData: submission.liveCanvasData ?? submission.canvasData,
             correctionData: submission.correctionData,
           } : null,
+        };
+      }),
+
+    // إرسال canvas الطالب لحظة بلحظة (للبث المباشر)
+    updateLiveCanvas: publicProcedure
+      .input(z.object({ submissionId: z.number(), canvasData: z.string() }))
+      .mutation(async ({ input }) => {
+        await updateLiveCanvasData(input.submissionId, input.canvasData);
+        return { ok: true };
+      }),
+
+    // جلب بيانات canvas الطالب اللحظية (لواجهة المعلم)
+    getLiveCanvas: publicProcedure
+      .input(z.object({ submissionId: z.number() }))
+      .query(async ({ input }) => {
+        const submission = await getSubmissionById(input.submissionId);
+        if (!submission) throw new TRPCError({ code: "NOT_FOUND" });
+        return {
+          canvasData: submission.liveCanvasData ?? submission.canvasData,
+          studentName: submission.studentName,
         };
       }),
   }),

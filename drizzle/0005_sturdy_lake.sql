@@ -1,0 +1,1 @@
+ALTER TABLE `student_submissions` ADD `liveCanvasData` longtext;

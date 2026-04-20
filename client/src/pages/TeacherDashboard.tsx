@@ -7,6 +7,21 @@ import type { CanvasElement } from "@/components/WhiteboardCanvas";
 import { toast } from "sonner";
 import { exportSubmissionsToPDF } from "@/lib/exportPDF";
 
+// مكوّن عرض سبورة الطالب لحظة بلحظة (يستعلم كل ثانيتين)
+function LiveBroadcastCanvas({ submissionId }: { submissionId: number }) {
+  const { data: liveData } = trpc.whiteboard.getLiveCanvas.useQuery(
+    { submissionId },
+    { refetchInterval: 2000 }
+  );
+  return (
+    <WhiteboardCanvas
+      readOnly={true}
+      initialData={liveData?.canvasData ?? null}
+      bgColor="#ffffff"
+    />
+  );
+}
+
 type SubmissionStatus = "pending" | "submitted" | "corrected";
 
 const statusConfig: Record<SubmissionStatus, { label: string; color: string; bg: string; dot: string }> = {
@@ -384,8 +399,8 @@ export default function TeacherDashboard() {
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* ── زر البث المباشر ── */}
-                  {selectedSubmission?.status !== "pending" && (
+                  {/* ── زر البث المباشر ── يظهر دائماً عند اختيار طالب */}
+                  {selectedSubmissionId && (
                     isBroadcasting ? (
                       <button
                         onClick={() => stopBroadcastMut.mutate({ sessionId })}
@@ -401,7 +416,7 @@ export default function TeacherDashboard() {
                         onClick={() => selectedSubmissionId && startBroadcastMut.mutate({ submissionId: selectedSubmissionId })}
                         disabled={startBroadcastMut.isPending}
                         className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-colors text-sm"
-                        title="بث سبورة هذا الطالب للفصل"
+                        title="بث سبورة هذا الطالب للفصل حتى قبل إرسال الإجابة"
                       >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg>
                         بث مباشر
@@ -487,7 +502,7 @@ export default function TeacherDashboard() {
 
               {/* ── السبورة الموحدة للتصحيح ── */}
               <div className="flex-1 overflow-y-auto bg-slate-50 p-3">
-                {selectedSubmission?.status === "pending" ? (
+                {selectedSubmission?.status === "pending" && !isBroadcasting ? (
                   <div className="h-64 flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200">
                     <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mb-4">
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
@@ -495,7 +510,25 @@ export default function TeacherDashboard() {
                       </svg>
                     </div>
                     <p className="text-slate-600 font-semibold">الطالب لم يُرسل إجابته بعد</p>
-                    <p className="text-slate-400 text-sm mt-1">انتظر حتى يُرسل الطالب إجابته</p>
+                    <p className="text-slate-400 text-sm mt-1">اضغط "بث مباشر" لمتابعة سبورة الطالب لحظة بلحظة</p>
+                  </div>
+                ) : selectedSubmission?.status === "pending" && isBroadcasting ? (
+                  // بث مباشر: عرض سبورة الطالب لحظة بلحظة (من liveCanvasData)
+                  <div className="bg-white rounded-2xl border-2 border-red-300 overflow-hidden flex flex-col" style={{ minHeight: 760 }}>
+                    <div className="bg-red-500 px-4 py-2.5 flex items-center gap-2 flex-shrink-0">
+                      <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+                      <span className="text-sm font-bold text-white">بث مباشر — يكتب {selectedSubmission?.studentName} الآن</span>
+                      <span className="mr-auto text-xs text-red-100">يتحدّث كل ثانيتين</span>
+                    </div>
+                    <div style={{ height: 700 }}>
+                      {loadingSelected ? (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="animate-spin w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full" />
+                        </div>
+                      ) : (
+                        <LiveBroadcastCanvas submissionId={selectedSubmissionId!} />
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col" style={{ minHeight: 760 }}>

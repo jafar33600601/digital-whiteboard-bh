@@ -41,6 +41,8 @@ export const studentSubmissions = mysqlTable("student_submissions", {
   canvasData: longtext("canvasData"),
   // بيانات تصحيح المعلم كـ JSON
   correctionData: longtext("correctionData"),
+  // بيانات canvas الطالب اللحظية (للبث المباشر - تُحدَّث كل ثانيتين)
+  liveCanvasData: longtext("liveCanvasData"),
   status: mysqlEnum("status", ["pending", "submitted", "corrected"]).default("pending").notNull(),
   submittedAt: timestamp("submittedAt"),
   correctedAt: timestamp("correctedAt"),

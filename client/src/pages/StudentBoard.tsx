@@ -40,6 +40,19 @@ export default function StudentBoard() {
 
   const joinMutation = trpc.student.joinSession.useMutation();
   const submitMutation = trpc.student.submitAnswer.useMutation();
+  const updateLiveCanvasMut = trpc.whiteboard.updateLiveCanvas.useMutation();
+
+  // إرسال canvas لحظي كل ثانيتين عندما يكون البث مفعلاً
+  const isBroadcastingMe = broadcastState?.isLive && broadcastState?.submission?.id === submissionId;
+  useEffect(() => {
+    if (!isBroadcastingMe || !submissionId || stage !== "working") return;
+    const interval = setInterval(() => {
+      if (!canvasRef.current) return;
+      const canvasData = canvasRef.current.getCanvasData();
+      updateLiveCanvasMut.mutate({ submissionId, canvasData });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isBroadcastingMe, submissionId, stage]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();

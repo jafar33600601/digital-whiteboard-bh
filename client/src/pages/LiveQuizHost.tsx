@@ -32,6 +32,8 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
   const [liveState, setLiveState] = useState<LiveState | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isStarted, setIsStarted] = useState(false);
+  // شاشة المراكز المنفصلة بين نتائج السؤال والسؤال التالي
+  const [showMidLeaderboard, setShowMidLeaderboard] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -277,7 +279,55 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
       liveState.currentAnswers.filter(a => a.answerIndex === i).length
     );
     const maxCount = Math.max(...answerCounts, 1);
+    const top3 = [...liveState.participants].sort((a, b) => b.score - a.score).slice(0, 3);
+    const medals = ["🥇", "🥈", "🥉"];
+    const medalBg = [
+      "bg-gradient-to-l from-yellow-500/30 to-yellow-400/10 border-yellow-400",
+      "bg-gradient-to-l from-slate-400/30 to-slate-300/10 border-slate-300",
+      "bg-gradient-to-l from-orange-500/30 to-orange-400/10 border-orange-400",
+    ];
+    const medalTextSize = ["text-5xl", "text-4xl", "text-3xl"];
+    const isLastQuestion = liveState.currentQuestionIndex + 1 >= quiz.questions.length;
 
+    // ── شاشة المراكز المنفصلة ──
+    if (showMidLeaderboard) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-yellow-900 via-orange-900 to-red-900 flex flex-col items-center justify-center p-6 gap-6" dir="rtl">
+          <div className="text-center">
+            <div className="text-7xl mb-3 animate-bounce">🏆</div>
+            <h1 className="text-4xl font-black text-white mb-1">المراكز بعد السؤال {liveState.currentQuestionIndex + 1}</h1>
+            <p className="text-yellow-200 text-lg">{liveState.participants.length} مشارك</p>
+          </div>
+
+          {/* منصة التتويج */}
+          {top3.length > 0 && (
+            <div className="w-full max-w-md flex flex-col gap-3">
+              {top3.map((p, i) => (
+                <div key={i} className={`flex items-center gap-4 rounded-2xl px-5 py-4 border-2 ${medalBg[i]}`}>
+                  <span className={`${medalTextSize[i]} shrink-0`}>{medals[i]}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-black text-xl truncate">{p.name}</p>
+                  </div>
+                  <span className="text-yellow-300 font-black text-2xl shrink-0">{p.score.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Button
+            size="lg"
+            className="bg-blue-500 hover:bg-blue-400 text-white text-xl py-6 px-10 rounded-2xl shadow-xl mt-2"
+            onClick={() => { setShowMidLeaderboard(false); nextQuestion.mutate({ quizId }); }}
+            disabled={nextQuestion.isPending}
+          >
+            <ChevronRight className="ml-2 w-6 h-6" />
+            {isLastQuestion ? "عرض المراكز النهائية" : "السؤال التالي"}
+          </Button>
+        </div>
+      );
+    }
+
+    // ── شاشة نتائج السؤال ──
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex flex-col p-4 gap-4" dir="rtl">
         <div className="flex items-center justify-between">
@@ -329,41 +379,14 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
           </CardContent>
         </Card>
 
-        {/* ── المراكز الثلاثة بعد كل سؤال ── */}
-        {liveState.participants.length > 0 && (() => {
-          const top3 = [...liveState.participants].sort((a, b) => b.score - a.score).slice(0, 3);
-          const medals = ["🥇", "🥈", "🥉"];
-          const medalColors = [
-            "border-yellow-400 bg-yellow-500/20",
-            "border-gray-300 bg-gray-500/20",
-            "border-orange-400 bg-orange-500/20",
-          ];
-          return (
-            <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
-              <CardContent className="p-4">
-                <h3 className="text-white font-bold text-center mb-3 text-sm">🏆 المراكز الحالية</h3>
-                <div className="flex flex-col gap-2">
-                  {top3.map((p, i) => (
-                    <div key={i} className={`flex items-center gap-3 rounded-xl px-3 py-2 border ${medalColors[i]}`}>
-                      <span className="text-2xl">{medals[i]}</span>
-                      <span className="text-white font-bold flex-1">{p.name}</span>
-                      <span className="text-yellow-300 font-black text-lg">{p.score.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })()}
-
+        {/* ── زر "عرض المراكز" ── */}
         <Button
           size="lg"
-          className="bg-blue-500 hover:bg-blue-400 text-white text-xl py-6 rounded-2xl"
-          onClick={() => nextQuestion.mutate({ quizId })}
-          disabled={nextQuestion.isPending}
+          className="bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xl py-6 rounded-2xl"
+          onClick={() => setShowMidLeaderboard(true)}
         >
-          <ChevronRight className="ml-2 w-6 h-6" />
-          {liveState.currentQuestionIndex + 1 >= quiz.questions.length ? "عرض المراكز النهائية" : "السؤال التالي"}
+          <Trophy className="ml-2 w-6 h-6" />
+          عرض المراكز 🏆
         </Button>
       </div>
     );
