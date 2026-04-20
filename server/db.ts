@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -256,4 +256,80 @@ export async function getQuizSubmissions(quizId: number) {
   return await db.select().from(quizSubmissions)
     .where(eq(quizSubmissions.quizId, quizId))
     .orderBy(desc(quizSubmissions.submittedAt));
+}
+
+export async function deleteQuizSubmissions(quizId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(quizSubmissions).where(eq(quizSubmissions.quizId, quizId));
+}
+
+export async function deleteAllSessionsByTeacher(teacherId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const sessions = await db.select({ id: whiteboardSessions.id }).from(whiteboardSessions).where(eq(whiteboardSessions.teacherId, teacherId));
+  for (const s of sessions) {
+    await db.delete(studentSubmissions).where(eq(studentSubmissions.sessionId, s.id));
+  }
+  await db.delete(whiteboardSessions).where(eq(whiteboardSessions.teacherId, teacherId));
+}
+
+export async function deleteAllQuizzesByTeacher(teacherId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const myQuizzes = await db.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.teacherId, teacherId));
+  for (const q of myQuizzes) {
+    await db.delete(quizSubmissions).where(eq(quizSubmissions.quizId, q.id));
+    await db.delete(quizQuestions).where(eq(quizQuestions.quizId, q.id));
+    await db.delete(liveQuizSessions).where(eq(liveQuizSessions.quizId, q.id));
+  }
+  await db.delete(quizzes).where(eq(quizzes.teacherId, teacherId));
+}
+
+// ===== Live Quiz Sessions =====
+
+export async function createLiveSession(quizId: number): Promise<typeof liveQuizSessions.$inferSelect> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(liveQuizSessions).values({
+    quizId,
+    state: "waiting",
+    currentQuestionIndex: 0,
+    participants: "[]",
+    currentAnswers: "[]",
+  });
+  const result = await db.select().from(liveQuizSessions)
+    .where(eq(liveQuizSessions.quizId, quizId))
+    .orderBy(desc(liveQuizSessions.createdAt))
+    .limit(1);
+  return result[0];
+}
+
+export async function getLiveSessionByQuiz(quizId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(liveQuizSessions)
+    .where(eq(liveQuizSessions.quizId, quizId))
+    .orderBy(desc(liveQuizSessions.createdAt))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getLiveSessionById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(liveQuizSessions).where(eq(liveQuizSessions.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateLiveSession(id: number, data: Partial<InsertLiveQuizSession>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(liveQuizSessions).set(data).where(eq(liveQuizSessions.id, id));
+}
+
+export async function deleteLiveSession(quizId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(liveQuizSessions).where(eq(liveQuizSessions.quizId, quizId));
 }

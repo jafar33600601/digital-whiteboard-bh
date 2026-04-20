@@ -57,6 +57,10 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
     onSuccess: () => { refetch(); setEditingTitle(false); toast.success("تم تحديث العنوان"); }
   });
 
+  const updateModeMut = trpc.quiz.updateMode.useMutation({
+    onSuccess: () => { refetch(); toast.success("تم تحديث نوع الاختبار"); }
+  });
+
   const publishMut = trpc.quiz.publish.useMutation({
     onSuccess: () => { refetch(); toast.success(quiz?.isPublished ? "تم إيقاف مشاركة الاختبار" : "تم نشر الاختبار!"); }
   });
@@ -200,7 +204,33 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
 
         {/* Share bar */}
         {shareVisible && (
-          <div className="bg-indigo-50 border-t border-indigo-100 px-4 py-3">
+          <div className="bg-indigo-50 border-t border-indigo-100 px-4 py-3 space-y-3">
+            {/* نوع الاختبار */}
+            <div className="max-w-4xl mx-auto">
+              <p className="text-xs font-semibold text-slate-600 mb-2">نوع الاختبار:</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => updateModeMut.mutate({ quizId: quizId!, mode: "normal" })}
+                  className={`flex-1 px-3 py-2 rounded-xl border-2 text-sm font-medium transition-all ${
+                    (quiz as unknown as { quizMode?: string }).quizMode !== "live"
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-indigo-300"
+                  }`}
+                >
+                  📝 عادي — الطالب يجيب بوقته
+                </button>
+                <button
+                  onClick={() => updateModeMut.mutate({ quizId: quizId!, mode: "live" })}
+                  className={`flex-1 px-3 py-2 rounded-xl border-2 text-sm font-medium transition-all ${
+                    (quiz as unknown as { quizMode?: string }).quizMode === "live"
+                      ? "border-purple-500 bg-purple-50 text-purple-700"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-purple-300"
+                  }`}
+                >
+                  ⚡ مباشر — المعلم يتحكم بالأسئلة
+                </button>
+              </div>
+            </div>
             <div className="max-w-4xl mx-auto flex items-center gap-3">
               <div className={`text-xs px-2 py-1 rounded-full font-medium ${quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
                 {quiz.isPublished ? "✓ منشور" : "⚠ غير منشور"}
@@ -216,9 +246,15 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                 onClick={() => navigate(`/quiz-results/${quizId}`)}>
                 النتائج
               </Button>
+              {(quiz as unknown as { quizMode?: string }).quizMode === "live" && (
+                <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white gap-1 shrink-0"
+                  onClick={() => navigate(`/quiz-live/${quizId}`)}>
+                  ▶ ابدأ المباشر
+                </Button>
+              )}
             </div>
             {!quiz.isPublished && (
-              <p className="text-xs text-amber-600 mt-1 max-w-4xl mx-auto">
+              <p className="text-xs text-amber-600 max-w-4xl mx-auto">
                 انشر الاختبار أولاً حتى يتمكن الطلاب من الدخول
               </p>
             )}

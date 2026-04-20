@@ -18,8 +18,10 @@ export default function Home() {
   const [newQuizTitle, setNewQuizTitle] = useState("");
   const [isCreatingQuiz, setIsCreatingQuiz] = useState(false);
   const [deleteQuizConfirm, setDeleteQuizConfirm] = useState<{ id: number; title: string } | null>(null);
-  const [isDeletingQuiz, setIsDeletingQuiz] = useState(false);
-
+   const [isDeletingQuiz, setIsDeletingQuiz] = useState(false);
+  const [deleteAllBoardsConfirm, setDeleteAllBoardsConfirm] = useState(false);
+  const [deleteAllQuizzesConfirm, setDeleteAllQuizzesConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const { data: sessions, isLoading: loadingSessions, refetch } =
     trpc.whiteboard.getMySessions.useQuery(undefined, { enabled: isAuthenticated });
 
@@ -63,6 +65,30 @@ export default function Home() {
     }
   };
   const deleteSessionMutation = trpc.whiteboard.deleteSession.useMutation();
+  const deleteAllSessionsMutation = trpc.whiteboard.deleteAllSessions.useMutation();
+  const deleteAllQuizzesMutation = trpc.quiz.deleteAllQuizzes.useMutation();
+
+  const handleDeleteAllBoards = async () => {
+    setIsDeletingAll(true);
+    try {
+      await deleteAllSessionsMutation.mutateAsync();
+      toast.success("تم حذف جميع السبورات");
+      setDeleteAllBoardsConfirm(false);
+      refetch();
+    } catch { toast.error("حدث خطأ أثناء الحذف"); }
+    finally { setIsDeletingAll(false); }
+  };
+
+  const handleDeleteAllQuizzes = async () => {
+    setIsDeletingAll(true);
+    try {
+      await deleteAllQuizzesMutation.mutateAsync();
+      toast.success("تم حذف جميع الاختبارات");
+      setDeleteAllQuizzesConfirm(false);
+      refetchQuizzes();
+    } catch { toast.error("حدث خطأ أثناء الحذف"); }
+    finally { setIsDeletingAll(false); }
+  };
 
   const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,7 +278,8 @@ export default function Home() {
           </div>
 
           {/* التبويبات */}
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-6 w-fit">
+          <div className="flex items-center justify-between mb-6">
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
             <button
               onClick={() => setActiveTab("boards")}
               className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -278,9 +305,32 @@ export default function Home() {
               {quizzes && quizzes.length > 0 && (
                 <span className="mr-1.5 bg-emerald-100 text-emerald-600 text-xs px-1.5 py-0.5 rounded-full">{quizzes.length}</span>
               )}
-            </button>
+             </button>
           </div>
-
+          {/* زر الحذف الجماعي */}
+          {activeTab === "boards" && sessions && sessions.length > 0 && (
+            <button
+              onClick={() => setDeleteAllBoardsConfirm(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all border border-red-100"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+              حذف الكل
+            </button>
+          )}
+          {activeTab === "quizzes" && quizzes && quizzes.length > 0 && (
+            <button
+              onClick={() => setDeleteAllQuizzesConfirm(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all border border-red-100"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+              حذف الكل
+            </button>
+          )}
+          </div>
           {/* نموذج إنشاء سبورة جديدة */}
           {showCreateForm && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
@@ -638,6 +688,64 @@ export default function Home() {
                     >
                       إلغاء
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* نافذة تأكيد حذف جميع السبورات */}
+          {deleteAllBoardsConfirm && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div className="bg-gradient-to-l from-red-600 to-rose-700 p-6 text-white">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                    </svg>
+                  </div>
+                  <h2 className="text-xl font-bold">حذف جميع السبورات</h2>
+                  <p className="text-red-100 text-sm mt-1">هذا الإجراء لا يمكن التراجع عنه</p>
+                </div>
+                <div className="p-6">
+                  <p className="text-slate-700 mb-4">سيتم حذف <strong>{sessions?.length}</strong> سبورة وجميع إجابات الطلاب المرتبطة بها نهائياً.</p>
+                  <div className="flex gap-3">
+                    <button onClick={handleDeleteAllBoards} disabled={isDeletingAll}
+                      className="flex-1 py-3 bg-gradient-to-l from-red-500 to-rose-600 text-white font-bold rounded-xl hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
+                      {isDeletingAll ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                      {isDeletingAll ? "جاري الحذف..." : "نعم، احذف الكل"}
+                    </button>
+                    <button onClick={() => setDeleteAllBoardsConfirm(false)} disabled={isDeletingAll}
+                      className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50">إلغاء</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* نافذة تأكيد حذف جميع الاختبارات */}
+          {deleteAllQuizzesConfirm && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div className="bg-gradient-to-l from-red-600 to-rose-700 p-6 text-white">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-3">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                    </svg>
+                  </div>
+                  <h2 className="text-xl font-bold">حذف جميع الاختبارات</h2>
+                  <p className="text-red-100 text-sm mt-1">هذا الإجراء لا يمكن التراجع عنه</p>
+                </div>
+                <div className="p-6">
+                  <p className="text-slate-700 mb-4">سيتم حذف <strong>{quizzes?.length}</strong> اختبار وجميع إجابات الطلاب المرتبطة بها نهائياً.</p>
+                  <div className="flex gap-3">
+                    <button onClick={handleDeleteAllQuizzes} disabled={isDeletingAll}
+                      className="flex-1 py-3 bg-gradient-to-l from-red-500 to-rose-600 text-white font-bold rounded-xl hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2">
+                      {isDeletingAll ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                      {isDeletingAll ? "جاري الحذف..." : "نعم، احذف الكل"}
+                    </button>
+                    <button onClick={() => setDeleteAllQuizzesConfirm(false)} disabled={isDeletingAll}
+                      className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50">إلغاء</button>
                   </div>
                 </div>
               </div>

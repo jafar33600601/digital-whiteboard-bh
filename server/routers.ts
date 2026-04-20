@@ -18,6 +18,7 @@ import {
   updateSubmissionCanvas,
   updateSubmissionCorrection,
   deleteSession,
+  deleteAllSessionsByTeacher,
   createQuiz,
   getQuizByShareCode,
   getQuizById,
@@ -31,6 +32,13 @@ import {
   deleteQuizQuestion,
   submitQuizAnswers,
   getQuizSubmissions,
+  deleteQuizSubmissions,
+  createLiveSession,
+  getLiveSessionByQuiz,
+  getLiveSessionById,
+  updateLiveSession,
+  deleteLiveSession,
+  deleteAllQuizzesByTeacher,
 } from "./db";
 import { storagePut } from "./storage";
 
@@ -152,6 +160,12 @@ const quizRouter = router({
       return { success: true };
     }),
 
+  deleteAllQuizzes: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      await deleteAllQuizzesByTeacher(ctx.user.id);
+      return { success: true };
+    }),
+
   // رفع صورة سؤال (base64 إلى S3)
   uploadQuestionImage: protectedProcedure
     .input(z.object({
@@ -235,6 +249,172 @@ const quizRouter = router({
         submittedAt: s.submittedAt,
       }));
     }),
+
+  // حذف جميع نتائج الاختبار
+  deleteSubmissions: protectedProcedure
+    .input(z.object({ quizId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      await deleteQuizSubmissions(input.quizId);
+      return { success: true };
+    }),
+
+  // تحديث نوع الاختبار (normal/live)
+  updateMode: protectedProcedure
+    .input(z.object({ quizId: z.number(), mode: z.enum(["normal", "live"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const db = (await import("./db")).getDb;
+      const drizzleDb = await db();
+      if (!drizzleDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { quizzes } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      await drizzleDb.update(quizzes).set({ quizMode: input.mode }).where(eq(quizzes.id, input.quizId));
+      return { success: true };
+    }),
+
+  // ===== Live Quiz (Kahoot-style) =====
+
+  // بدء جلسة مباشرة (المعلم)
+  startLive: protectedProcedure
+    .input(z.object({ quizId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      // حذف الجلسة القديمة إن وجدت
+      await deleteLiveSession(input.quizId);
+      const session = await createLiveSession(input.quizId);
+      return session;
+    }),
+
+  // الحصول على حالة الجلسة المباشرة (polling للطالب والمعلم)
+  getLiveState: publicProcedure
+    .input(z.object({ quizId: z.number() }))
+    .query(async ({ input }) => {
+      const session = await getLiveSessionByQuiz(input.quizId);
+      if (!session) return null;
+      return {
+        id: session.id,
+        state: session.state,
+        currentQuestionIndex: session.currentQuestionIndex,
+        questionStartedAt: session.questionStartedAt,
+        participants: JSON.parse(session.participants || "[]") as { name: string; score: number }[],
+        currentAnswers: JSON.parse(session.currentAnswers || "[]") as { studentName: string; answerIndex: number; timeMs: number }[],
+      };
+    }),
+
+  // الطالب ينضم للجلسة المباشرة
+  joinLive: publicProcedure
+    .input(z.object({ quizId: z.number(), studentName: z.string().min(1).max(255) }))
+    .mutation(async ({ input }) => {
+      const session = await getLiveSessionByQuiz(input.quizId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "لا توجد جلسة مباشرة نشطة" });
+      if (session.state === "ended") throw new TRPCError({ code: "FORBIDDEN", message: "انتهت الجلسة" });
+      const participants = JSON.parse(session.participants || "[]") as { name: string; score: number }[];
+      const exists = participants.find(p => p.name === input.studentName);
+      if (!exists) {
+        participants.push({ name: input.studentName, score: 0 });
+        await updateLiveSession(session.id, { participants: JSON.stringify(participants) });
+      }
+      return { sessionId: session.id, quizId: input.quizId };
+    }),
+
+  // المعلم ينتقل للسؤال التالي
+  nextQuestion: protectedProcedure
+    .input(z.object({ quizId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const session = await getLiveSessionByQuiz(input.quizId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      const questions = await getQuestionsByQuiz(input.quizId);
+      const nextIndex = session.state === "waiting" ? 0 : session.currentQuestionIndex + 1;
+      if (nextIndex >= questions.length) {
+        // انتهت الأسئلة - عرض المراكز
+        await updateLiveSession(session.id, { state: "leaderboard", currentAnswers: "[]" });
+        return { state: "leaderboard", questionIndex: nextIndex };
+      }
+      await updateLiveSession(session.id, {
+        state: "question",
+        currentQuestionIndex: nextIndex,
+        questionStartedAt: new Date(),
+        currentAnswers: "[]",
+      });
+      return { state: "question", questionIndex: nextIndex };
+    }),
+
+  // عرض نتائج السؤال الحالي (المعلم)
+  showQuestionResults: protectedProcedure
+    .input(z.object({ quizId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const session = await getLiveSessionByQuiz(input.quizId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      await updateLiveSession(session.id, { state: "results" });
+      return { success: true };
+    }),
+
+  // الطالب يرسل إجابته في الوضع المباشر
+  submitLiveAnswer: publicProcedure
+    .input(z.object({
+      quizId: z.number(),
+      studentName: z.string().min(1).max(255),
+      answerIndex: z.number(),
+      timeMs: z.number(),
+    }))
+    .mutation(async ({ input }) => {
+      const session = await getLiveSessionByQuiz(input.quizId);
+      if (!session || session.state !== "question") throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكن الإجابة الآن" });
+      const currentAnswers = JSON.parse(session.currentAnswers || "[]") as { studentName: string; answerIndex: number; timeMs: number }[];
+      // منع الإجابة المكررة
+      if (currentAnswers.find(a => a.studentName === input.studentName)) {
+        return { success: true, alreadyAnswered: true };
+      }
+      currentAnswers.push({ studentName: input.studentName, answerIndex: input.answerIndex, timeMs: input.timeMs });
+      // تحديث الدرجات
+      const questions = await getQuestionsByQuiz(input.quizId);
+      const currentQ = questions[session.currentQuestionIndex];
+      const isCorrect = currentQ && input.answerIndex === currentQ.correctAnswer;
+      if (isCorrect) {
+        const participants = JSON.parse(session.participants || "[]") as { name: string; score: number }[];
+        const p = participants.find(p => p.name === input.studentName);
+        if (p) {
+          // نقاط أكثر للإجابة الأسرع (max 1000 نقطة)
+          const timeLimit = currentQ.timeLimit * 1000;
+          const points = Math.max(100, Math.round(1000 * (1 - input.timeMs / timeLimit)));
+          p.score += points;
+          await updateLiveSession(session.id, {
+            currentAnswers: JSON.stringify(currentAnswers),
+            participants: JSON.stringify(participants),
+          });
+        } else {
+          await updateLiveSession(session.id, { currentAnswers: JSON.stringify(currentAnswers) });
+        }
+      } else {
+        await updateLiveSession(session.id, { currentAnswers: JSON.stringify(currentAnswers) });
+      }
+      return { success: true, isCorrect, alreadyAnswered: false };
+    }),
+
+  // إنهاء الجلسة المباشرة
+  endLive: protectedProcedure
+    .input(z.object({ quizId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const session = await getLiveSessionByQuiz(input.quizId);
+      if (session) await updateLiveSession(session.id, { state: "ended" });
+      return { success: true };
+    }),
 });
 
 
@@ -313,6 +493,13 @@ export const appRouter = router({
         if (!session) throw new TRPCError({ code: "NOT_FOUND" });
         if (session.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
         await deleteSession(input.sessionId);
+        return { success: true };
+      }),
+
+    // حذف جميع السبورات دفعة واحدة
+    deleteAllSessions: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        await deleteAllSessionsByTeacher(ctx.user.id);
         return { success: true };
       }),
 

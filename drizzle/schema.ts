@@ -56,6 +56,8 @@ export const quizzes = mysqlTable("quizzes", {
   teacherId: int("teacherId").notNull(),
   title: varchar("title", { length: 255 }).notNull().default("اختبار جديد"),
   isPublished: int("isPublished").default(0).notNull(), // 0=draft, 1=published
+  // quizMode: normal = الطالب يجيب بوقته | live = كاهوت-style
+  quizMode: mysqlEnum("quizMode", ["normal", "live"]).default("normal").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -75,6 +77,8 @@ export const quizQuestions = mysqlTable("quiz_questions", {
   // correctAnswer: index 0-3
   correctAnswer: int("correctAnswer").notNull().default(0),
   questionOrder: int("questionOrder").notNull().default(0),
+  // وقت الإجابة بالثواني (للوضع المباشر)
+  timeLimit: int("timeLimit").notNull().default(30),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -95,3 +99,22 @@ export const quizSubmissions = mysqlTable("quiz_submissions", {
 
 export type QuizSubmission = typeof quizSubmissions.$inferSelect;
 export type InsertQuizSubmission = typeof quizSubmissions.$inferInsert;
+
+// جدول جلسات الاختبار المباشر (Kahoot-style)
+export const liveQuizSessions = mysqlTable("live_quiz_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quizId").notNull(),
+  // الحالة: waiting=انتظار الطلاب | question=يعرض سؤالاً | results=نتائج السؤال | leaderboard=المراكز | ended=انتهى
+  state: mysqlEnum("state", ["waiting", "question", "results", "leaderboard", "ended"]).default("waiting").notNull(),
+  currentQuestionIndex: int("currentQuestionIndex").default(0).notNull(),
+  questionStartedAt: timestamp("questionStartedAt"),
+  // قائمة الطلاب المنضمين: JSON array of {name, score}
+  participants: longtext("participants").notNull(),
+  // إجابات السؤال الحالي: JSON array of {studentName, answerIndex, timeMs}
+  currentAnswers: longtext("currentAnswers").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LiveQuizSession = typeof liveQuizSessions.$inferSelect;
+export type InsertLiveQuizSession = typeof liveQuizSessions.$inferInsert;
