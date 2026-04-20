@@ -142,15 +142,13 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
     setShowAddForm(true);
   };
 
-  const quizMode = (quiz as unknown as { quizMode?: string }).quizMode ?? "normal";
-  const shareUrl = quiz
-    ? quizMode === "live"
-      ? `${window.location.origin}/quiz-join/${quiz.shareCode}`
-      : `${window.location.origin}/quiz/${quiz.shareCode}`
-    : "";
-
   if (!quizId) return <div className="p-8 text-center text-gray-500">اختبار غير موجود</div>;
   if (!quiz) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin w-8 h-8 text-indigo-500" /></div>;
+
+  const quizMode = (quiz as unknown as { quizMode?: string }).quizMode ?? "normal";
+  const shareUrl = quizMode === "live"
+    ? `${window.location.origin}/quiz-join/${quiz.shareCode}`
+    : `${window.location.origin}/quiz/${quiz.shareCode}`;
 
   const questions = quiz.questions ?? [];
 
