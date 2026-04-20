@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import WhiteboardCanvas, { type WhiteboardCanvasRef } from "@/components/WhiteboardCanvas";
@@ -13,6 +13,7 @@ export default function StudentBoard() {
   const [stage, setStage] = useState<Stage>("enter-name");
   const [studentName, setStudentName] = useState("");
   const [submissionId, setSubmissionId] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [sessionTitle, setSessionTitle] = useState("");
   const [teacherCanvasData, setTeacherCanvasData] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +32,26 @@ export default function StudentBoard() {
     { enabled: !!submissionId && stage === "submitted", refetchInterval: 8000 }
   );
 
+  // استطلاع حالة البث (كل 3 ثواني) — فقط أثناء العمل
+  const { data: broadcastState } = trpc.whiteboard.getBroadcastState.useQuery(
+    { sessionId: sessionId! },
+    { enabled: !!sessionId && stage === "working", refetchInterval: 3000 }
+  );
+
+  const updateLiveCanvasMut = trpc.whiteboard.updateLiveCanvas.useMutation();
+
+  // إرسال canvas تلقائياً كل ثانيتين — فقط إذا كان هذا الطالب هو المبثوث
+  const amIBroadcasted = broadcastState?.isLive && broadcastState?.submission?.id === submissionId;
+  useEffect(() => {
+    if (!amIBroadcasted || !submissionId || stage !== "working") return;
+    const interval = setInterval(() => {
+      if (!canvasRef.current) return;
+      const canvasData = canvasRef.current.getCanvasData();
+      updateLiveCanvasMut.mutate({ submissionId, canvasData });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [amIBroadcasted, submissionId, stage]);
+
   const joinMutation = trpc.student.joinSession.useMutation();
   const submitMutation = trpc.student.submitAnswer.useMutation();
 
@@ -43,8 +64,8 @@ export default function StudentBoard() {
         studentName: studentName.trim(),
       });
       setSubmissionId(result.submissionId);
+      setSessionId(result.sessionId);
       setSessionTitle(result.sessionTitle);
-      // ← سبورة الطالب تبدأ بمحتوى المعلم
       setTeacherCanvasData(result.teacherCanvasData ?? null);
       setStage("working");
     } catch {
@@ -165,6 +186,13 @@ export default function StudentBoard() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* مؤشر البث: يظهر فقط للطالب المبثوث نفسه */}
+            {amIBroadcasted && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full animate-pulse">
+                <div className="w-2 h-2 bg-red-500 rounded-full" />
+                <span className="text-xs font-bold text-red-600">📡 أنت تُبث الآن</span>
+              </div>
+            )}
             <div className="hidden sm:flex items-center gap-1.5 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-1.5">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
@@ -231,7 +259,6 @@ export default function StudentBoard() {
       </div>
 
       <div className="flex-1 p-3 flex flex-col gap-3">
-        {/* رسالة الحالة */}
         {!hasCorrectionData && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">

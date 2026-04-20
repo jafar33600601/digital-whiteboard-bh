@@ -230,11 +230,10 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
                 key={i}
                 onClick={() => handleAnswer(i)}
                 disabled={timeLeft === 0}
-                className="rounded-2xl p-4 text-white font-bold text-lg flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg disabled:opacity-50"
+                className="rounded-2xl p-5 text-white font-bold flex items-center justify-center active:scale-95 transition-transform shadow-lg disabled:opacity-50"
                 style={{ backgroundColor: COLORS[i] }}
               >
-                <span className="text-3xl font-black">{OPTION_LABELS[i]}</span>
-                <span className="text-sm text-center">{opt}</span>
+                <span className="text-2xl font-bold text-center leading-snug">{opt}</span>
               </button>
             ))}
           </div>

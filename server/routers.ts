@@ -21,6 +21,8 @@ import {
   deleteAllSessionsByTeacher,
   setLiveBroadcast,
   updateLiveCanvasData,
+  deleteSubmission,
+  deleteAllSubmissionsInSession,
   createQuiz,
   getQuizByShareCode,
   getQuizById,
@@ -498,6 +500,26 @@ export const appRouter = router({
         return { success: true };
       }),
 
+    // حذف إجابة طالب واحد
+    deleteStudentSubmission: protectedProcedure
+      .input(z.object({ submissionId: z.number(), sessionId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const session = await getSessionById(input.sessionId);
+        if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+        if (session.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        await deleteSubmission(input.submissionId);
+        return { success: true };
+      }),
+    // حذف جميع إجابات الطلاب في جلسة (بدون حذف سبورة المعلم)
+    deleteAllStudentSubmissions: protectedProcedure
+      .input(z.object({ sessionId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const session = await getSessionById(input.sessionId);
+        if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+        if (session.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+        await deleteAllSubmissionsInSession(input.sessionId);
+        return { success: true };
+      }),
     // حذف جميع السبورات دفعة واحدة
     deleteAllSessions: protectedProcedure
       .mutation(async ({ ctx }) => {

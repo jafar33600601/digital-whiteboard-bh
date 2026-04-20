@@ -99,6 +99,22 @@ export default function TeacherDashboard() {
     );
 
   const correctMutation = trpc.whiteboard.correctSubmission.useMutation();
+  const utils = trpc.useUtils();
+  const deleteSubmissionMut = trpc.whiteboard.deleteStudentSubmission.useMutation({
+    onSuccess: () => {
+      toast.success("تم حذف إجابة الطالب");
+      utils.whiteboard.getSubmissions.invalidate({ sessionId });
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
+  const deleteAllSubmissionsMut = trpc.whiteboard.deleteAllStudentSubmissions.useMutation({
+    onSuccess: () => {
+      toast.success("تم حذف جميع إجابات الطلاب");
+      setSelectedSubmissionId(null);
+      utils.whiteboard.getSubmissions.invalidate({ sessionId });
+    },
+    onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
   const startBroadcastMut = trpc.whiteboard.startBroadcast.useMutation({
     onSuccess: () => { setIsBroadcasting(true); toast.success("تم بدء البث المباشر 📡 يرى الطلاب سبورة هذا الطالب الآن"); },
     onError: (e) => toast.error(e.message),
@@ -319,8 +335,25 @@ export default function TeacherDashboard() {
 
         {/* ── قائمة الطلاب ───────────────────────────────────────────────── */}
         <div className={`${selectedSubmissionId ? "hidden lg:flex" : "flex"} flex-col w-full lg:w-72 border-l border-slate-200 bg-white overflow-y-auto flex-shrink-0`}>
-          <div className="p-3 bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+          <div className="p-3 bg-slate-50 border-b border-slate-200 sticky top-0 z-10 flex items-center justify-between gap-2">
             <p className="text-sm font-bold text-slate-700">قائمة الطلاب</p>
+            {submissions && submissions.length > 0 && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`هل تريد حذف جميع إجابات الطلاب (${submissions.length})؟\nسبورة المعلم لن تُحذف.`)) {
+                    deleteAllSubmissionsMut.mutate({ sessionId });
+                  }
+                }}
+                disabled={deleteAllSubmissionsMut.isPending}
+                className="flex items-center gap-1 px-2 py-1 bg-red-50 border border-red-200 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
+                title="حذف جميع إجابات الطلاب"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M9 6V4h6v2" />
+                </svg>
+                حذف الكل
+              </button>
+            )}
           </div>
 
           {loadingSubmissions ? (
@@ -343,25 +376,41 @@ export default function TeacherDashboard() {
                 const cfg = statusConfig[sub.status as SubmissionStatus];
                 const isSelected = selectedSubmissionId === sub.id;
                 return (
-                  <button
-                    key={sub.id}
-                    onClick={() => setSelectedSubmissionId(sub.id)}
-                    className={`w-full text-right px-4 py-3 hover:bg-slate-50 transition-colors flex items-center gap-3 ${isSelected ? "bg-indigo-50 border-r-4 border-indigo-500" : ""}`}
-                  >
-                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                      {sub.studentName.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-800 truncate text-sm">{sub.studentName}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                        <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
+                  <div key={sub.id} className={`flex items-center ${isSelected ? "bg-indigo-50 border-r-4 border-indigo-500" : ""}`}>
+                    <button
+                      onClick={() => setSelectedSubmissionId(sub.id)}
+                      className="flex-1 text-right px-4 py-3 hover:bg-slate-50 transition-colors flex items-center gap-3"
+                    >
+                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                        {sub.studentName.charAt(0)}
                       </div>
-                    </div>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
-                      <polyline points="15 18 9 12 15 6" />
-                    </svg>
-                  </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-slate-800 truncate text-sm">{sub.studentName}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                          <span className={`text-xs font-medium ${cfg.color}`}>{cfg.label}</span>
+                        </div>
+                      </div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`هل تريد حذف إجابة ${sub.studentName}؟`)) {
+                          if (selectedSubmissionId === sub.id) setSelectedSubmissionId(null);
+                          deleteSubmissionMut.mutate({ submissionId: sub.id, sessionId });
+                        }
+                      }}
+                      className="px-3 py-3 text-slate-300 hover:text-red-500 transition-colors flex-shrink-0"
+                      title={`حذف إجابة ${sub.studentName}`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M9 6V4h6v2" />
+                      </svg>
+                    </button>
+                  </div>
                 );
               })}
             </div>

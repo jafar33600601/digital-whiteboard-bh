@@ -222,18 +222,17 @@ export default function QuizStudent({ params }: { params?: { code?: string } }) 
                       <button
                         key={oi}
                         onClick={() => setAnswers(a => ({ ...a, [idx]: oi }))}
-                        className={`flex items-center gap-3 px-4 py-4 rounded-xl border-2 text-right transition-all w-full
+                        className={`flex items-center gap-3 px-5 py-5 rounded-xl border-2 text-right transition-all w-full
                           ${isSelected
                             ? `${color?.border} ${color?.light} shadow-sm`
                             : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"}`}
                       >
-                        <span className={`w-10 h-10 rounded-full text-white text-base flex items-center justify-center font-bold shrink-0 ${color?.bg}`}>
-                          {color?.label}
-                        </span>
-                        <span className={`flex-1 text-base leading-snug ${isSelected ? "font-bold text-slate-800" : "text-slate-700"}`}>
+                        {/* شريط لوني بدلاً من حرف */}
+                        <span className={`w-2 h-10 rounded-full shrink-0 ${color?.bg}`} />
+                        <span className={`flex-1 text-xl leading-snug font-semibold ${isSelected ? "font-bold text-slate-800" : "text-slate-700"}`}>
                           {opt}
                         </span>
-                        {isSelected && <CheckCircle2 className="w-5 h-5 text-indigo-500 shrink-0" />}
+                        {isSelected && <CheckCircle2 className="w-6 h-6 text-indigo-500 shrink-0" />}
                       </button>
                     );
                   })}

@@ -276,6 +276,18 @@ export async function deleteQuizSubmissions(quizId: number) {
   await db.delete(quizSubmissions).where(eq(quizSubmissions.quizId, quizId));
 }
 
+export async function deleteSubmission(submissionId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(studentSubmissions).where(eq(studentSubmissions.id, submissionId));
+}
+
+export async function deleteAllSubmissionsInSession(sessionId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(studentSubmissions).where(eq(studentSubmissions.sessionId, sessionId));
+}
+
 export async function deleteAllSessionsByTeacher(teacherId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
