@@ -41,11 +41,18 @@ const statusConfig: Record<SubmissionStatus, { label: string; color: string; bg:
 };
 
 // ── أداة النجوم التحفيزية ────────────────────────────────────────────────────
-const STAR_COLORS = [
-  { label: "ذهبي",   value: "#f59e0b" },
-  { label: "أخضر",   value: "#22c55e" },
-  { label: "بنفسجي", value: "#a855f7" },
-  { label: "أحمر",   value: "#ef4444" },
+// أدوات التحفيز الجاهزة
+const MOTIVATIONAL_STAMPS = [
+  { label: "⭐ نجمة",           text: "⭐",              color: "#f59e0b", fontSize: 56 },
+  { label: "10 من 10",          text: "10 من 10 🌟",    color: "#16a34a", fontSize: 32 },
+  { label: "متميز 🏆",           text: "متميز 🏆",         color: "#7c3aed", fontSize: 32 },
+  { label: "حاول مرة أخرى 💪",   text: "حاول مرة أخرى 💪",  color: "#dc2626", fontSize: 28 },
+  { label: "أنت بطل 🦅",          text: "أنت بطل 🦅",        color: "#0891b2", fontSize: 32 },
+  { label: "رائع جداً ✨",         text: "رائع جداً ✨",       color: "#d97706", fontSize: 30 },
+  { label: "إجابة صحيحة ✅",     text: "إجابة صحيحة ✅",   color: "#16a34a", fontSize: 28 },
+  { label: "استمر 💪",            text: "استمر 💪",           color: "#0284c7", fontSize: 30 },
+  { label: "أحسنت 👏",            text: "أحسنت 👏",           color: "#9333ea", fontSize: 30 },
+  { label: "ممتاز 100 💯",         text: "ممتاز 100 💯",       color: "#be185d", fontSize: 28 },
 ];
 
 export default function TeacherDashboard() {
@@ -56,8 +63,6 @@ export default function TeacherDashboard() {
 
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
   const [isSavingCorrection, setIsSavingCorrection] = useState(false);
-  const [starColor, setStarColor] = useState("#f59e0b");
-  const [starSize, setStarSize] = useState(48);
   const [showStarPanel, setShowStarPanel] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [exportProgress, setExportProgress] = useState<{ current: number; total: number } | null>(null);
@@ -191,31 +196,31 @@ export default function TeacherDashboard() {
     }
   }, [selectedSubmission?.id, selectedSubmission?.canvasData]);
 
-  // إضافة نجمة تحفيزية
-  const addStar = () => {
+  // إضافة ختم تحفيزي
+  const addStamp = (stamp: typeof MOTIVATIONAL_STAMPS[0]) => {
     if (!correctionCanvasRef.current) return;
-    // نضيف نجمة في منتصف السبورة
     const currentData = correctionCanvasRef.current.getCanvasData();
     try {
       const parsed = JSON.parse(currentData);
-      const starEl: CanvasElement = {
+      const stampEl: CanvasElement = {
         type: "text",
         id: `txt-${Date.now()}`,
-        x: 600 + Math.random() * 200 - 100,
-        y: 350 + Math.random() * 100 - 50,
-        width: starSize * 2,
-        height: starSize * 2,
-        text: "⭐",
-        color: starColor,
-        fontSize: starSize,
+        x: 400 + Math.random() * 400 - 200,
+        y: 300 + Math.random() * 200 - 100,
+        width: stamp.fontSize * 6,
+        height: stamp.fontSize * 2,
+        text: stamp.text,
+        color: stamp.color,
+        fontSize: stamp.fontSize,
       };
-      parsed.elements.push(starEl);
+      parsed.elements.push(stampEl);
       const newData = JSON.stringify(parsed);
       correctionCanvasRef.current.loadCanvasData(newData);
       setMergedCanvasData(newData);
-      toast.success("تمت إضافة نجمة تحفيزية! ⭐");
+      toast.success(`تمت إضافة: ${stamp.label}`);
+      setShowStarPanel(false);
     } catch {
-      toast.error("تعذّر إضافة النجمة");
+      toast.error("تعذّر إضافة الختم");
     }
   };
 
@@ -497,47 +502,26 @@ export default function TeacherDashboard() {
                     </button>
 
                     {showStarPanel && (
-                      <div className="absolute top-full mt-2 left-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 w-64" style={{ direction: "rtl" }}>
-                        <p className="text-sm font-bold text-slate-700 mb-3">إعدادات النجمة</p>
-
-                        <div className="mb-3">
-                          <p className="text-xs text-slate-500 mb-2">اللون</p>
-                          <div className="flex gap-2">
-                            {STAR_COLORS.map(c => (
-                              <button
-                                key={c.value}
-                                onClick={() => setStarColor(c.value)}
-                                className={`w-8 h-8 rounded-full border-3 transition-transform hover:scale-110 ${starColor === c.value ? "border-slate-600 scale-110 shadow-md" : "border-slate-300"}`}
-                                style={{ backgroundColor: c.value }}
-                                title={c.label}
-                              />
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="mb-4">
-                          <p className="text-xs text-slate-500 mb-2">الحجم: {starSize}px</p>
-                          <input
-                            type="range" min="24" max="96" step="8"
-                            value={starSize}
-                            onChange={e => setStarSize(Number(e.target.value))}
-                            className="w-full accent-amber-500"
-                          />
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => { addStar(); setShowStarPanel(false); }}
-                            className="flex-1 py-2 bg-gradient-to-l from-amber-500 to-orange-500 text-white font-bold rounded-xl text-sm hover:opacity-90"
-                          >
-                            إضافة ⭐
-                          </button>
+                      <div className="absolute top-full mt-2 left-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 w-72" style={{ direction: "rtl" }}>
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-bold text-slate-700">أدوات التحفيز</p>
                           <button
                             onClick={() => setShowStarPanel(false)}
-                            className="px-3 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm hover:bg-slate-50"
-                          >
-                            إغلاق
-                          </button>
+                            className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full text-xs"
+                          >×</button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {MOTIVATIONAL_STAMPS.map(stamp => (
+                            <button
+                              key={stamp.label}
+                              onClick={() => addStamp(stamp)}
+                              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 hover:border-transparent hover:shadow-md transition-all text-right text-sm font-bold"
+                              style={{ color: stamp.color, backgroundColor: `${stamp.color}12` }}
+                            >
+                              <span className="text-base leading-none flex-shrink-0">{stamp.text.split(' ')[0]}</span>
+                              <span className="truncate">{stamp.label}</span>
+                            </button>
+                          ))}
                         </div>
                       </div>
                     )}

@@ -58,6 +58,7 @@ interface WhiteboardCanvasProps {
   onDataChange?: (data: string) => void;
   className?: string;
   bgColor?: string;
+  lockedElementCount?: number; // عدد العناصر الأولى المقفلة (عناصر المعلم في سبورة الطالب)
 }
 
 const CANVAS_W = 1200;
@@ -154,7 +155,7 @@ function calcTextHeight(
 
 // ─── component ──────────────────────────────────────────────────────────────
 const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
-  ({ readOnly = false, initialData, overlayData, onDataChange, className = "", bgColor = "#ffffff" }, ref) => {
+  ({ readOnly = false, initialData, overlayData, onDataChange, className = "", bgColor = "#ffffff", lockedElementCount = 0 }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -481,8 +482,11 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
 
       // أداة select أو pen أو eraser — تحقق من العناصر القابلة للتفاعل
       if (tool === "select" || tool === "pen" || tool === "eraser") {
+        // العناصر القابلة للتفاعل: فقط العناصر التي أضافها الطالب (بعد lockedElementCount)
+        const interactableElements = elements.slice(lockedElementCount);
+
         // فحص عناصر النص أولاً (من الأحدث للأقدم)
-        const textEls = [...elements].reverse().filter(el => el.type === "text") as TextElement[];
+        const textEls = [...interactableElements].reverse().filter(el => el.type === "text") as TextElement[];
         for (const tel of textEls) {
           // resize corner؟
           const corner = hitTestCorner(tel, pos.x, pos.y);
@@ -502,7 +506,7 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
         }
 
         // فحص الصور
-        const imgs = [...elements].reverse().filter(el => el.type === "image") as ImageElement[];
+        const imgs = [...interactableElements].reverse().filter(el => el.type === "image") as ImageElement[];
         for (const img of imgs) {
           if (img.locked) continue;
           const corner = hitTestCorner(img, pos.x, pos.y);

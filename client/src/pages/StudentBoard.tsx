@@ -16,6 +16,7 @@ export default function StudentBoard() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [sessionTitle, setSessionTitle] = useState("");
   const [teacherCanvasData, setTeacherCanvasData] = useState<string | null>(null);
+  const [teacherElementCount, setTeacherElementCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const canvasRef = useRef<WhiteboardCanvasRef>(null);
 
@@ -66,7 +67,15 @@ export default function StudentBoard() {
       setSubmissionId(result.submissionId);
       setSessionId(result.sessionId);
       setSessionTitle(result.sessionTitle);
-      setTeacherCanvasData(result.teacherCanvasData ?? null);
+      const tData = result.teacherCanvasData ?? null;
+      setTeacherCanvasData(tData);
+      // حساب عدد عناصر المعلم لقفلها
+      if (tData) {
+        try {
+          const parsed = JSON.parse(tData);
+          setTeacherElementCount((parsed.elements || []).length);
+        } catch { setTeacherElementCount(0); }
+      }
       setStage("working");
     } catch {
       toast.error("تعذّر الانضمام. تحقق من الرابط وحاول مجدداً");
@@ -219,6 +228,7 @@ export default function StudentBoard() {
               initialData={teacherCanvasData}
               onDataChange={() => {}}
               bgColor="#ffffff"
+              lockedElementCount={teacherElementCount}
             />
           </div>
         </div>
