@@ -15,8 +15,11 @@ export interface DrawingPath {
 
 export interface TextElement {
   type: "text";
+  id: string;
   x: number;
   y: number;
+  width: number;   // عرض مربع النص
+  height: number;  // ارتفاع مربع النص
   text: string;
   color: string;
   fontSize: number;
@@ -60,30 +63,93 @@ interface WhiteboardCanvasProps {
 const CANVAS_W = 1200;
 const CANVAS_H = 700;
 const HANDLE_SIZE = 10; // px on canvas coords
+const MIN_TEXT_W = 80;
+const MIN_TEXT_H = 40;
+const DEFAULT_TEXT_W = 300;
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-function hitTestImage(img: ImageElement, x: number, y: number) {
-  return x >= img.x && x <= img.x + img.width && y >= img.y && y <= img.y + img.height;
+function hitTestBox(el: { x: number; y: number; width: number; height: number }, x: number, y: number) {
+  return x >= el.x && x <= el.x + el.width && y >= el.y && y <= el.y + el.height;
 }
 
 type Corner = "tl" | "tr" | "bl" | "br";
 const CORNERS: Corner[] = ["tl", "tr", "bl", "br"];
 
-function cornerPos(img: ImageElement, corner: Corner): { x: number; y: number } {
+function cornerPos(el: { x: number; y: number; width: number; height: number }, corner: Corner): { x: number; y: number } {
   switch (corner) {
-    case "tl": return { x: img.x, y: img.y };
-    case "tr": return { x: img.x + img.width, y: img.y };
-    case "bl": return { x: img.x, y: img.y + img.height };
-    case "br": return { x: img.x + img.width, y: img.y + img.height };
+    case "tl": return { x: el.x, y: el.y };
+    case "tr": return { x: el.x + el.width, y: el.y };
+    case "bl": return { x: el.x, y: el.y + el.height };
+    case "br": return { x: el.x + el.width, y: el.y + el.height };
   }
 }
 
-function hitTestCorner(img: ImageElement, x: number, y: number): Corner | null {
+function hitTestCorner(el: { x: number; y: number; width: number; height: number }, x: number, y: number): Corner | null {
   for (const c of CORNERS) {
-    const p = cornerPos(img, c);
+    const p = cornerPos(el, c);
     if (Math.abs(x - p.x) <= HANDLE_SIZE && Math.abs(y - p.y) <= HANDLE_SIZE) return c;
   }
   return null;
+}
+
+// رسم النص مع word wrap داخل مربع على Canvas
+function drawWrappedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  fontSize: number,
+  color: string
+) {
+  ctx.fillStyle = color;
+  ctx.font = `${fontSize}px 'Cairo', sans-serif`;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "top";
+
+  const words = text.split(" ");
+  let line = "";
+  let curY = y + 6;
+  const rightEdge = x + maxWidth - 8;
+
+  for (const word of words) {
+    const testLine = line ? line + " " + word : word;
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth - 16 && line) {
+      ctx.fillText(line, rightEdge, curY);
+      line = word;
+      curY += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  if (line) ctx.fillText(line, rightEdge, curY);
+}
+
+// حساب الارتفاع الكافي للنص مع word wrap
+function calcTextHeight(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  lineHeight: number,
+  fontSize: number
+): number {
+  ctx.font = `${fontSize}px 'Cairo', sans-serif`;
+  const words = text.split(" ");
+  let line = "";
+  let lines = 1;
+  for (const word of words) {
+    const testLine = line ? line + " " + word : word;
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth - 16 && line) {
+      lines++;
+      line = word;
+    } else {
+      line = testLine;
+    }
+  }
+  return lines * lineHeight + 16;
 }
 
 // ─── component ──────────────────────────────────────────────────────────────
@@ -100,17 +166,32 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
     const [elements, setElements] = useState<CanvasElement[]>([]);
     const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
 
-    // text input
-    const [textInput, setTextInput] = useState<{ x: number; y: number; visible: boolean; value: string }>({
-      x: 0, y: 0, visible: false, value: ""
+    // text input overlay state
+    const [textInput, setTextInput] = useState<{
+      id: string | null;       // null = جديد، string = تعديل موجود
+      x: number; y: number;
+      width: number; height: number;
+      visible: boolean;
+      value: string;
+      color: string;
+      fontSize: number;
+    }>({
+      id: null, x: 0, y: 0, width: DEFAULT_TEXT_W, height: 80,
+      visible: false, value: "", color: "#1a1a2e", fontSize: 22,
     });
 
-    // image interaction
-    const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+    // selected element (image or text)
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    // drag / resize refs
     const dragRef = useRef<{ offsetX: number; offsetY: number } | null>(null);
-    const resizeRef = useRef<{ corner: Corner; origImg: ImageElement; startX: number; startY: number } | null>(null);
-    const isDraggingImage = useRef(false);
-    const isResizingImage = useRef(false);
+    const resizeRef = useRef<{
+      corner: Corner;
+      origEl: ImageElement | TextElement;
+      startX: number; startY: number;
+    } | null>(null);
+    const isDraggingEl = useRef(false);
+    const isResizingEl = useRef(false);
 
     // ── canvas scale helper ──────────────────────────────────────────────────
     const getPos = useCallback((e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
@@ -124,7 +205,7 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
     }, []);
 
-    // ── redraw ───────────────────────────────────────────────────────────────
+    // ── image cache ──────────────────────────────────────────────────────────
     const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
 
     const loadImage = useCallback((src: string): Promise<HTMLImageElement> => {
@@ -136,6 +217,7 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       });
     }, []);
 
+    // ── redraw ───────────────────────────────────────────────────────────────
     const redrawCanvas = useCallback(async (elems: CanvasElement[], overlay?: string | null, selId?: string | null) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -157,32 +239,55 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
             ctx.moveTo(el.points[0].x, el.points[0].y);
             for (let i = 1; i < el.points.length; i++) ctx.lineTo(el.points[i].x, el.points[i].y);
             ctx.stroke();
+
           } else if (el.type === "text") {
-            // للنجوم والـ emoji نستخدم خط emoji مخصص
-            const isEmoji = el.text === "\u2B50" || el.text === "\u2605" || /^[\uD83C-\uDBFF][\uDC00-\uDFFF]+$/.test(el.text);
+            const lineH = el.fontSize * 1.4;
+
+            // خلفية شفافة للمربع (للتمييز البصري)
+            ctx.save();
+            ctx.fillStyle = "rgba(255,255,255,0.01)";
+            ctx.fillRect(el.x, el.y, el.width, el.height);
+            ctx.restore();
+
+            // رسم النص مع word wrap
+            const isEmoji = el.text === "⭐" || el.text === "★" || /^[\uD83C-\uDBFF][\uDC00-\uDFFF]+$/.test(el.text);
             if (isEmoji) {
-              // رسم خلفية ملونة خلف النجمة
               ctx.font = `${el.fontSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif`;
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
-              // رسم دائرة ملونة كخلفية
               ctx.save();
               ctx.globalAlpha = 0.15;
               ctx.fillStyle = el.color;
               ctx.beginPath();
-              ctx.arc(el.x, el.y, el.fontSize * 0.65, 0, Math.PI * 2);
+              ctx.arc(el.x + el.width / 2, el.y + el.height / 2, el.fontSize * 0.65, 0, Math.PI * 2);
               ctx.fill();
               ctx.restore();
               ctx.fillStyle = el.color;
-              ctx.fillText(el.text, el.x, el.y);
+              ctx.fillText(el.text, el.x + el.width / 2, el.y + el.height / 2);
               ctx.textBaseline = "alphabetic";
             } else {
-              ctx.fillStyle = el.color;
-              ctx.font = `${el.fontSize}px 'Cairo', sans-serif`;
-              ctx.textAlign = "right";
-              ctx.textBaseline = "alphabetic";
-              ctx.fillText(el.text, el.x, el.y);
+              drawWrappedText(ctx, el.text, el.x, el.y, el.width, lineH, el.fontSize, el.color);
             }
+
+            // إطار التحديد + handles
+            if (el.id === selId) {
+              ctx.save();
+              ctx.strokeStyle = "#16a34a";
+              ctx.lineWidth = 2;
+              ctx.setLineDash([6, 3]);
+              ctx.strokeRect(el.x - 1, el.y - 1, el.width + 2, el.height + 2);
+              ctx.setLineDash([]);
+              for (const c of CORNERS) {
+                const p = cornerPos(el, c);
+                ctx.fillStyle = "#ffffff";
+                ctx.strokeStyle = "#16a34a";
+                ctx.lineWidth = 2;
+                ctx.fillRect(p.x - HANDLE_SIZE / 2, p.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+                ctx.strokeRect(p.x - HANDLE_SIZE / 2, p.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+              }
+              ctx.restore();
+            }
+
           } else if (el.type === "image") {
             try {
               const img = await loadImage(el.src);
@@ -196,8 +301,6 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
                 ctx.setLineDash([6, 3]);
                 ctx.strokeRect(el.x - 1, el.y - 1, el.width + 2, el.height + 2);
                 ctx.setLineDash([]);
-
-                // corner handles
                 for (const c of CORNERS) {
                   const p = cornerPos(el, c);
                   ctx.fillStyle = "#ffffff";
@@ -253,15 +356,32 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       if (initialData) {
         try {
           const data: CanvasData = JSON.parse(initialData);
-          setElements(data.elements || []);
-          setTimeout(() => redrawCanvas(data.elements || [], overlayData, selectedImageId), 50);
+          // ترقية العناصر القديمة (TextElement بدون id/width/height)
+          const upgraded = (data.elements || []).map(el => {
+            if (el.type === "text" && !("id" in el)) {
+              const t = el as { type: "text"; x: number; y: number; text: string; color: string; fontSize: number };
+              return {
+                type: "text" as const,
+                id: `txt-${Math.random().toString(36).slice(2)}`,
+                x: t.x, y: t.y,
+                width: DEFAULT_TEXT_W,
+                height: 80,
+                text: t.text,
+                color: t.color,
+                fontSize: t.fontSize,
+              } as TextElement;
+            }
+            return el;
+          });
+          setElements(upgraded);
+          setTimeout(() => redrawCanvas(upgraded, overlayData, selectedId), 50);
         } catch {}
       }
     }, [initialData]);
 
     useEffect(() => {
-      redrawCanvas(elements, overlayData, selectedImageId);
-    }, [overlayData, elements, selectedImageId, redrawCanvas]);
+      redrawCanvas(elements, overlayData, selectedId);
+    }, [overlayData, elements, selectedId, redrawCanvas]);
 
     // ── notify parent ────────────────────────────────────────────────────────
     const notifyChange = useCallback((elems: CanvasElement[]) => {
@@ -272,7 +392,6 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
     useEffect(() => {
       if (readOnly) return;
       const handlePaste = async (e: ClipboardEvent) => {
-        // image paste
         const items = e.clipboardData?.items;
         if (items) {
           for (const item of Array.from(items)) {
@@ -282,9 +401,9 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
               const reader = new FileReader();
               reader.onload = (ev) => {
                 const src = ev.target?.result as string;
+                if (!src) return;
                 const tempImg = new Image();
                 tempImg.onload = () => {
-                  // scale to fit canvas nicely
                   const maxW = CANVAS_W * 0.5;
                   const maxH = CANVAS_H * 0.5;
                   let w = tempImg.naturalWidth;
@@ -296,38 +415,37 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
                     id: `img-${Date.now()}`,
                     x: (CANVAS_W - w) / 2,
                     y: (CANVAS_H - h) / 2,
-                    width: w,
-                    height: h,
-                    src,
-                    locked: false,
+                    width: w, height: h,
+                    src, locked: false,
                   };
                   setElements(prev => {
                     const next = [...prev, newImg];
                     notifyChange(next);
                     return next;
                   });
-                  setSelectedImageId(newImg.id);
+                  setSelectedId(newImg.id);
                 };
                 tempImg.src = src;
               };
               reader.readAsDataURL(file);
-              return; // handled
+              return;
             }
           }
         }
-
-        // text paste fallback
+        // text paste
         const text = e.clipboardData?.getData("text");
         if (text) {
+          const newEl: TextElement = {
+            type: "text",
+            id: `txt-${Date.now()}`,
+            x: CANVAS_W / 2 - DEFAULT_TEXT_W / 2,
+            y: CANVAS_H / 2 - 40,
+            width: DEFAULT_TEXT_W,
+            height: 80,
+            text, color,
+            fontSize: lineWidth * 6 + 10,
+          };
           setElements(prev => {
-            const newEl: TextElement = {
-              type: "text",
-              x: CANVAS_W / 2,
-              y: CANVAS_H / 2,
-              text,
-              color,
-              fontSize: lineWidth * 6 + 10,
-            };
             const next = [...prev, newEl];
             notifyChange(next);
             return next;
@@ -346,43 +464,71 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       e.preventDefault();
       const pos = getPos(e, canvas);
 
-      if (tool === "select" || tool === "pen" || tool === "eraser") {
-        // check if clicking on an image
-        const imgs = [...elements].reverse().filter(el => el.type === "image") as ImageElement[];
-        for (const img of imgs) {
-          if (img.locked) continue;
+      // أداة النص: فتح مربع كتابة جديد
+      if (tool === "text") {
+        // إذا كان هناك نص مفتوح، أغلقه أولاً
+        if (textInput.visible) return;
+        const fontSize = lineWidth * 6 + 10;
+        setTextInput({
+          id: null,
+          x: pos.x, y: pos.y,
+          width: DEFAULT_TEXT_W, height: 80,
+          visible: true, value: "",
+          color, fontSize,
+        });
+        return;
+      }
 
-          // resize corner?
-          const corner = hitTestCorner(img, pos.x, pos.y);
+      // أداة select أو pen أو eraser — تحقق من العناصر القابلة للتفاعل
+      if (tool === "select" || tool === "pen" || tool === "eraser") {
+        // فحص عناصر النص أولاً (من الأحدث للأقدم)
+        const textEls = [...elements].reverse().filter(el => el.type === "text") as TextElement[];
+        for (const tel of textEls) {
+          // resize corner؟
+          const corner = hitTestCorner(tel, pos.x, pos.y);
           if (corner) {
-            resizeRef.current = { corner, origImg: { ...img }, startX: pos.x, startY: pos.y };
-            isResizingImage.current = true;
-            setSelectedImageId(img.id);
+            resizeRef.current = { corner, origEl: { ...tel }, startX: pos.x, startY: pos.y };
+            isResizingEl.current = true;
+            setSelectedId(tel.id);
             return;
           }
-
-          // drag body?
-          if (hitTestImage(img, pos.x, pos.y)) {
-            dragRef.current = { offsetX: pos.x - img.x, offsetY: pos.y - img.y };
-            isDraggingImage.current = true;
-            setSelectedImageId(img.id);
+          // drag body؟
+          if (hitTestBox(tel, pos.x, pos.y)) {
+            dragRef.current = { offsetX: pos.x - tel.x, offsetY: pos.y - tel.y };
+            isDraggingEl.current = true;
+            setSelectedId(tel.id);
             return;
           }
         }
-        // clicked on empty area — deselect
-        setSelectedImageId(null);
-      }
 
-      if (tool === "text") {
-        setTextInput({ x: pos.x, y: pos.y, visible: true, value: "" });
-        return;
+        // فحص الصور
+        const imgs = [...elements].reverse().filter(el => el.type === "image") as ImageElement[];
+        for (const img of imgs) {
+          if (img.locked) continue;
+          const corner = hitTestCorner(img, pos.x, pos.y);
+          if (corner) {
+            resizeRef.current = { corner, origEl: { ...img }, startX: pos.x, startY: pos.y };
+            isResizingEl.current = true;
+            setSelectedId(img.id);
+            return;
+          }
+          if (hitTestBox(img, pos.x, pos.y)) {
+            dragRef.current = { offsetX: pos.x - img.x, offsetY: pos.y - img.y };
+            isDraggingEl.current = true;
+            setSelectedId(img.id);
+            return;
+          }
+        }
+
+        // نقر على منطقة فارغة — إلغاء التحديد
+        setSelectedId(null);
       }
 
       if (tool === "pen" || tool === "eraser") {
         setIsDrawing(true);
         setCurrentPath([pos]);
       }
-    }, [readOnly, tool, elements, getPos]);
+    }, [readOnly, tool, elements, textInput.visible, getPos, color, lineWidth]);
 
     // ── pointer move ─────────────────────────────────────────────────────────
     const draw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -392,24 +538,25 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       e.preventDefault();
       const pos = getPos(e, canvas);
 
-      // resize image
-      if (isResizingImage.current && resizeRef.current) {
-        const { corner, origImg, startX, startY } = resizeRef.current;
+      // resize element (image or text)
+      if (isResizingEl.current && resizeRef.current) {
+        const { corner, origEl, startX, startY } = resizeRef.current;
         const dx = pos.x - startX;
         const dy = pos.y - startY;
         setElements(prev => prev.map(el => {
-          if (el.type !== "image" || el.id !== origImg.id) return el;
-          let { x, y, width, height } = origImg;
-          const minSize = 30;
+          if (!("id" in el) || el.id !== origEl.id) return el;
+          let { x, y, width, height } = origEl;
+          const minW = el.type === "text" ? MIN_TEXT_W : 30;
+          const minH = el.type === "text" ? MIN_TEXT_H : 30;
           switch (corner) {
-            case "br": width = Math.max(minSize, origImg.width + dx); height = Math.max(minSize, origImg.height + dy); break;
-            case "bl": x = Math.min(origImg.x + origImg.width - minSize, origImg.x + dx); width = origImg.width - (x - origImg.x); height = Math.max(minSize, origImg.height + dy); break;
-            case "tr": width = Math.max(minSize, origImg.width + dx); y = Math.min(origImg.y + origImg.height - minSize, origImg.y + dy); height = origImg.height - (y - origImg.y); break;
+            case "br": width = Math.max(minW, origEl.width + dx); height = Math.max(minH, origEl.height + dy); break;
+            case "bl": x = Math.min(origEl.x + origEl.width - minW, origEl.x + dx); width = origEl.width - (x - origEl.x); height = Math.max(minH, origEl.height + dy); break;
+            case "tr": width = Math.max(minW, origEl.width + dx); y = Math.min(origEl.y + origEl.height - minH, origEl.y + dy); height = origEl.height - (y - origEl.y); break;
             case "tl":
-              x = Math.min(origImg.x + origImg.width - minSize, origImg.x + dx);
-              y = Math.min(origImg.y + origImg.height - minSize, origImg.y + dy);
-              width = origImg.width - (x - origImg.x);
-              height = origImg.height - (y - origImg.y);
+              x = Math.min(origEl.x + origEl.width - minW, origEl.x + dx);
+              y = Math.min(origEl.y + origEl.height - minH, origEl.y + dy);
+              width = origEl.width - (x - origEl.x);
+              height = origEl.height - (y - origEl.y);
               break;
           }
           return { ...el, x, y, width, height };
@@ -417,11 +564,11 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
         return;
       }
 
-      // drag image
-      if (isDraggingImage.current && dragRef.current && selectedImageId) {
+      // drag element (image or text)
+      if (isDraggingEl.current && dragRef.current && selectedId) {
         const { offsetX, offsetY } = dragRef.current;
         setElements(prev => prev.map(el => {
-          if (el.type !== "image" || el.id !== selectedImageId) return el;
+          if (!("id" in el) || el.id !== selectedId) return el;
           return { ...el, x: pos.x - offsetX, y: pos.y - offsetY };
         }));
         return;
@@ -443,13 +590,13 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       ctx.moveTo(last.x, last.y);
       ctx.lineTo(curr.x, curr.y);
       ctx.stroke();
-    }, [readOnly, isDrawing, tool, currentPath, color, lineWidth, bgColor, selectedImageId, getPos]);
+    }, [readOnly, isDrawing, tool, currentPath, color, lineWidth, bgColor, selectedId, getPos]);
 
     // ── pointer up ───────────────────────────────────────────────────────────
     const stopDrawing = useCallback(() => {
-      if (isResizingImage.current || isDraggingImage.current) {
-        isResizingImage.current = false;
-        isDraggingImage.current = false;
+      if (isResizingEl.current || isDraggingEl.current) {
+        isResizingEl.current = false;
+        isDraggingEl.current = false;
         dragRef.current = null;
         resizeRef.current = null;
         setElements(prev => { notifyChange(prev); return prev; });
@@ -473,62 +620,119 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
 
     // ── text submit ──────────────────────────────────────────────────────────
     const submitText = useCallback(() => {
-      if (!textInput.value.trim()) { setTextInput(t => ({ ...t, visible: false })); return; }
-      const newEl: TextElement = {
-        type: "text", x: textInput.x, y: textInput.y,
-        text: textInput.value, color, fontSize: lineWidth * 6 + 10,
-      };
-      setElements(prev => {
-        const next = [...prev, newEl];
-        notifyChange(next);
-        return next;
-      });
-      setTextInput({ x: 0, y: 0, visible: false, value: "" });
-    }, [textInput, color, lineWidth, notifyChange]);
+      if (!textInput.value.trim()) {
+        setTextInput(t => ({ ...t, visible: false }));
+        return;
+      }
+      // حساب الارتفاع المناسب للنص
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      const lineH = textInput.fontSize * 1.4;
+      let finalH = textInput.height;
+      if (ctx) {
+        const needed = calcTextHeight(ctx, textInput.value, textInput.width, lineH, textInput.fontSize);
+        finalH = Math.max(textInput.height, needed);
+      }
+
+      if (textInput.id) {
+        // تعديل نص موجود
+        setElements(prev => {
+          const next = prev.map(el =>
+            el.type === "text" && el.id === textInput.id
+              ? { ...el, text: textInput.value, color: textInput.color, fontSize: textInput.fontSize, height: finalH }
+              : el
+          );
+          notifyChange(next);
+          return next;
+        });
+      } else {
+        // إضافة نص جديد
+        const newEl: TextElement = {
+          type: "text",
+          id: `txt-${Date.now()}`,
+          x: textInput.x,
+          y: textInput.y,
+          width: textInput.width,
+          height: finalH,
+          text: textInput.value,
+          color: textInput.color,
+          fontSize: textInput.fontSize,
+        };
+        setElements(prev => {
+          const next = [...prev, newEl];
+          notifyChange(next);
+          return next;
+        });
+      }
+      setTextInput(t => ({ ...t, visible: false, value: "" }));
+    }, [textInput, notifyChange]);
+
+    // ── double-click to edit text ────────────────────────────────────────────
+    const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+      if (readOnly) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const pos = getPos(e, canvas);
+      const textEls = [...elements].reverse().filter(el => el.type === "text") as TextElement[];
+      for (const tel of textEls) {
+        if (hitTestBox(tel, pos.x, pos.y)) {
+          setTextInput({
+            id: tel.id,
+            x: tel.x, y: tel.y,
+            width: tel.width, height: tel.height,
+            visible: true,
+            value: tel.text,
+            color: tel.color,
+            fontSize: tel.fontSize,
+          });
+          return;
+        }
+      }
+    }, [readOnly, elements, getPos]);
 
     // ── lock / unlock selected image ─────────────────────────────────────────
     const toggleLock = useCallback(() => {
-      if (!selectedImageId) return;
+      if (!selectedId) return;
       setElements(prev => {
         const next = prev.map(el =>
-          el.type === "image" && el.id === selectedImageId
+          el.type === "image" && el.id === selectedId
             ? { ...el, locked: !el.locked }
             : el
         );
         notifyChange(next);
         return next;
       });
-    }, [selectedImageId, notifyChange]);
+    }, [selectedId, notifyChange]);
 
-    // ── delete selected image ────────────────────────────────────────────────
+    // ── delete selected element ──────────────────────────────────────────────
     const deleteSelected = useCallback(() => {
-      if (!selectedImageId) return;
+      if (!selectedId) return;
       setElements(prev => {
-        const next = prev.filter(el => !(el.type === "image" && el.id === selectedImageId));
+        const next = prev.filter(el => !("id" in el) || el.id !== selectedId);
         notifyChange(next);
         return next;
       });
-      setSelectedImageId(null);
-    }, [selectedImageId, notifyChange]);
+      setSelectedId(null);
+    }, [selectedId, notifyChange]);
 
     // ── keyboard shortcuts ───────────────────────────────────────────────────
     useEffect(() => {
       if (readOnly) return;
       const handler = (e: KeyboardEvent) => {
-        if ((e.key === "Delete" || e.key === "Backspace") && selectedImageId && document.activeElement === document.body) {
+        if ((e.key === "Delete" || e.key === "Backspace") && selectedId && document.activeElement === document.body) {
           deleteSelected();
         }
       };
       window.addEventListener("keydown", handler);
       return () => window.removeEventListener("keydown", handler);
-    }, [readOnly, selectedImageId, deleteSelected]);
+    }, [readOnly, selectedId, deleteSelected]);
 
     // ── cursor style ─────────────────────────────────────────────────────────
     const getCursor = () => {
       if (readOnly) return "default";
       if (tool === "eraser") return "cell";
       if (tool === "text") return "text";
-      if (tool === "select") return isDraggingImage.current ? "grabbing" : "grab";
+      if (tool === "select") return isDraggingEl.current ? "grabbing" : "grab";
       return "crosshair";
     };
 
@@ -538,23 +742,41 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       loadCanvasData: (data: string) => {
         try {
           const parsed: CanvasData = JSON.parse(data);
-          setElements(parsed.elements || []);
-          redrawCanvas(parsed.elements || [], overlayData, null);
+          const upgraded = (parsed.elements || []).map(el => {
+            if (el.type === "text" && !("id" in el)) {
+              const t = el as { type: "text"; x: number; y: number; text: string; color: string; fontSize: number };
+              return {
+                type: "text" as const,
+                id: `txt-${Math.random().toString(36).slice(2)}`,
+                x: t.x, y: t.y,
+                width: DEFAULT_TEXT_W,
+                height: 80,
+                text: t.text,
+                color: t.color,
+                fontSize: t.fontSize,
+              } as TextElement;
+            }
+            return el;
+          });
+          setElements(upgraded);
+          redrawCanvas(upgraded, overlayData, null);
         } catch {}
       },
       clear: () => {
         setElements([]);
-        setSelectedImageId(null);
+        setSelectedId(null);
         redrawCanvas([], overlayData, null);
         notifyChange([]);
       },
       getImageDataURL: () => canvasRef.current?.toDataURL("image/png") || "",
     }));
 
-    // selected image info
-    const selectedImg = selectedImageId
-      ? (elements.find(el => el.type === "image" && el.id === selectedImageId) as ImageElement | undefined)
+    // selected element info
+    const selectedEl = selectedId
+      ? elements.find(el => "id" in el && el.id === selectedId)
       : undefined;
+    const selectedImg = selectedEl?.type === "image" ? selectedEl as ImageElement : undefined;
+    const selectedTxt = selectedEl?.type === "text" ? selectedEl as TextElement : undefined;
 
     return (
       <div ref={containerRef} className={`relative flex flex-col ${className}`} style={{ direction: "ltr" }}>
@@ -586,7 +808,7 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
             </button>
 
             {/* تحديد / تحريك */}
-            <button onClick={() => setTool("select")} title="تحديد وتحريك الصور"
+            <button onClick={() => setTool("select")} title="تحديد وتحريك (النصوص والصور)"
               className={`p-2 rounded-lg transition-all ${tool === "select" ? "bg-purple-100 text-purple-700 shadow-sm" : "hover:bg-slate-100 text-slate-600"}`}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M5 3l14 9-7 1-3 7z" />
@@ -609,20 +831,18 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
 
             <div className="w-px h-6 bg-slate-200 mx-1" />
 
-            {/* السماكة */}
-            <label className="text-xs text-slate-500 font-medium">السماكة</label>
+            {/* السماكة / حجم الخط */}
+            <label className="text-xs text-slate-500 font-medium">{tool === "text" ? "حجم الخط" : "السماكة"}</label>
             <input type="range" min="1" max="20" value={lineWidth} onChange={e => setLineWidth(Number(e.target.value))}
               className="w-20 accent-indigo-600" />
             <span className="text-xs text-slate-600 w-4">{lineWidth}</span>
 
-            {/* ── image controls (show when image selected) ── */}
+            {/* ── image controls ── */}
             {selectedImg && (
               <>
                 <div className="w-px h-6 bg-slate-200 mx-1" />
                 <div className="flex items-center gap-1 bg-indigo-50 border border-indigo-200 rounded-lg px-2 py-1">
                   <span className="text-xs text-indigo-600 font-medium">صورة محددة</span>
-
-                  {/* قفل / فك القفل */}
                   <button onClick={toggleLock} title={selectedImg.locked ? "فك القفل" : "قفل الصورة"}
                     className={`p-1.5 rounded-md text-xs font-semibold flex items-center gap-1 transition-all ${selectedImg.locked ? "bg-indigo-600 text-white" : "bg-white text-indigo-700 border border-indigo-300 hover:bg-indigo-50"}`}>
                     {selectedImg.locked ? (
@@ -635,16 +855,12 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
                       </svg> قفل</>
                     )}
                   </button>
-
-                  {/* حذف */}
                   <button onClick={deleteSelected} title="حذف الصورة"
                     className="p-1.5 rounded-md bg-white text-red-600 border border-red-200 hover:bg-red-50 transition-all">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
                     </svg>
                   </button>
-
-                  {/* الأبعاد */}
                   <span className="text-xs text-slate-500 mr-1">
                     {Math.round(selectedImg.width)} × {Math.round(selectedImg.height)}
                   </span>
@@ -652,10 +868,40 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
               </>
             )}
 
-            {/* تلميح لصق الصورة */}
-            {!selectedImg && (
+            {/* ── text controls ── */}
+            {selectedTxt && (
+              <>
+                <div className="w-px h-6 bg-slate-200 mx-1" />
+                <div className="flex items-center gap-1 bg-green-50 border border-green-200 rounded-lg px-2 py-1">
+                  <span className="text-xs text-green-700 font-medium">نص محدد</span>
+                  <button onClick={() => {
+                    setTextInput({
+                      id: selectedTxt.id,
+                      x: selectedTxt.x, y: selectedTxt.y,
+                      width: selectedTxt.width, height: selectedTxt.height,
+                      visible: true,
+                      value: selectedTxt.text,
+                      color: selectedTxt.color,
+                      fontSize: selectedTxt.fontSize,
+                    });
+                  }} title="تعديل النص"
+                    className="p-1.5 rounded-md bg-white text-green-700 border border-green-300 hover:bg-green-50 transition-all text-xs font-medium">
+                    تعديل
+                  </button>
+                  <button onClick={deleteSelected} title="حذف النص"
+                    className="p-1.5 rounded-md bg-white text-red-600 border border-red-200 hover:bg-red-50 transition-all">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
+                    </svg>
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* تلميح */}
+            {!selectedImg && !selectedTxt && (
               <span className="text-xs text-slate-400 mr-2 hidden sm:inline">
-                💡 الصق صورة بـ Ctrl+V
+                💡 الصق صورة بـ Ctrl+V · انقر مرتين على النص لتعديله
               </span>
             )}
           </div>
@@ -671,25 +917,47 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
             onMouseMove={draw}
             onMouseUp={stopDrawing}
             onMouseLeave={stopDrawing}
+            onDoubleClick={handleDoubleClick}
             onTouchStart={startDrawing}
             onTouchMove={draw}
             onTouchEnd={stopDrawing}
           />
 
-          {/* text input overlay */}
+          {/* ── text input overlay ── */}
           {textInput.visible && (
-            <div className="absolute" style={{
-              left: `${(textInput.x / CANVAS_W) * 100}%`,
-              top: `${(textInput.y / CANVAS_H) * 100}%`,
-              transform: "translate(-50%, -50%)",
-            }}>
-              <input autoFocus type="text" value={textInput.value}
+            <div
+              className="absolute"
+              style={{
+                left: `${(textInput.x / CANVAS_W) * 100}%`,
+                top: `${(textInput.y / CANVAS_H) * 100}%`,
+                width: `${(textInput.width / CANVAS_W) * 100}%`,
+                minHeight: `${(textInput.height / CANVAS_H) * 100}%`,
+              }}
+            >
+              <textarea
+                autoFocus
+                value={textInput.value}
                 onChange={e => setTextInput(t => ({ ...t, value: e.target.value }))}
-                onKeyDown={e => { if (e.key === "Enter") submitText(); if (e.key === "Escape") setTextInput(t => ({ ...t, visible: false })); }}
+                onKeyDown={e => {
+                  if (e.key === "Escape") setTextInput(t => ({ ...t, visible: false }));
+                  if (e.key === "Enter" && e.ctrlKey) submitText();
+                }}
                 onBlur={submitText}
-                className="border-2 border-indigo-400 rounded px-2 py-1 text-sm bg-white shadow-lg outline-none"
-                style={{ color, fontSize: `${lineWidth * 6 + 10}px`, minWidth: "120px", direction: "rtl" }}
-                placeholder="اكتب هنا..." />
+                className="w-full h-full border-2 border-green-500 rounded px-2 py-1 bg-white/95 shadow-lg outline-none resize"
+                style={{
+                  color: textInput.color,
+                  fontSize: `${(textInput.fontSize / CANVAS_H) * 100 * 6}px`,
+                  minWidth: "80px",
+                  minHeight: "40px",
+                  direction: "rtl",
+                  fontFamily: "'Cairo', sans-serif",
+                  lineHeight: "1.4",
+                  boxSizing: "border-box",
+                  resize: "both",
+                  overflow: "hidden",
+                }}
+                placeholder="اكتب هنا... (Ctrl+Enter للحفظ)"
+              />
             </div>
           )}
         </div>

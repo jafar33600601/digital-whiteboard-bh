@@ -200,8 +200,11 @@ export default function TeacherDashboard() {
       const parsed = JSON.parse(currentData);
       const starEl: CanvasElement = {
         type: "text",
+        id: `txt-${Date.now()}`,
         x: 600 + Math.random() * 200 - 100,
         y: 350 + Math.random() * 100 - 50,
+        width: starSize * 2,
+        height: starSize * 2,
         text: "⭐",
         color: starColor,
         fontSize: starSize,

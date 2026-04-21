@@ -145,7 +145,7 @@ export default function Home() {
                 <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
               </svg>
             </div>
-            <span className="text-lg font-bold text-slate-800">السبورة الرقمية</span>
+            <span className="text-lg font-bold text-slate-800">موقع ديجيتال البحرين</span>
           </div>
 
           {isAuthenticated ? (
@@ -179,9 +179,9 @@ export default function Home() {
           </div>
 
           <h1 className="text-5xl font-black text-slate-900 leading-tight mb-6">
-            السبورة الرقمية
+            موقع ديجيتال البحرين
             <span className="block text-transparent bg-clip-text bg-gradient-to-l from-indigo-600 to-purple-600">
-              التفاعلية
+              سبورة واختبارات رقمية
             </span>
           </h1>
 
