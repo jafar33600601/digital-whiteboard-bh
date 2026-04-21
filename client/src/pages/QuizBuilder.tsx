@@ -220,7 +220,7 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                       : "border-slate-200 bg-white text-slate-500 hover:border-indigo-300"
                   }`}
                 >
-                  📝 عادي — الطالب يجيب بوقته
+                  📝 عادي — الطالب يجيب بوقته · Quiziz
                 </button>
                 <button
                   onClick={() => updateModeMut.mutate({ quizId: quizId!, mode: "live" })}
@@ -230,7 +230,7 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                       : "border-slate-200 bg-white text-slate-500 hover:border-purple-300"
                   }`}
                 >
-                  ⚡ مباشر — المعلم يتحكم بالأسئلة
+                  ⚡ مباشر — المعلم يتحكم بالأسئلة · Kahoot
                 </button>
               </div>
             </div>
