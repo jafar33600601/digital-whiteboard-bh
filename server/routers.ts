@@ -43,6 +43,18 @@ import {
   updateLiveSession,
   deleteLiveSession,
   deleteAllQuizzesByTeacher,
+  createPadletBoard,
+  getPadletBoardsByTeacher,
+  getPadletBoardById,
+  getPadletBoardByCode,
+  updatePadletBoard,
+  deletePadletBoard,
+  deleteAllPadletBoardsByTeacher,
+  createPadletCard,
+  getPadletCardsByBoard,
+  deletePadletCard,
+  updatePadletCard,
+  likePadletCard,
 } from "./db";
 import { storagePut } from "./storage";
 
@@ -422,6 +434,165 @@ const quizRouter = router({
     }),
 });
 
+const padletRouter = router({
+  // إنشاء لوحة جديدة
+  createBoard: protectedProcedure
+    .input(z.object({
+      title: z.string().min(1).max(255).default("لوحة جديدة"),
+      description: z.string().max(500).optional(),
+      layout: z.enum(["grid", "stream", "freeform"]).default("grid"),
+      bgColor: z.string().default("#f8fafc"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const shareCode = nanoid(10);
+      return createPadletBoard({ ...input, teacherId: ctx.user.id, shareCode });
+    }),
+
+  // جلب لوحات المعلم
+  getMyBoards: protectedProcedure.query(async ({ ctx }) => {
+    return getPadletBoardsByTeacher(ctx.user.id);
+  }),
+
+  // جلب لوحة بالمعرف (للمعلم)
+  getBoardById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.id);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+      return board;
+    }),
+
+  // جلب لوحة بالكود (عام - للطالب)
+  getBoardByCode: publicProcedure
+    .input(z.object({ shareCode: z.string() }))
+    .query(async ({ input }) => {
+      const board = await getPadletBoardByCode(input.shareCode);
+      if (!board) throw new TRPCError({ code: "NOT_FOUND" });
+      return board;
+    }),
+
+  // تحديث إعدادات اللوحة
+  updateBoard: protectedProcedure
+    .input(z.object({
+      id: z.number(),
+      title: z.string().min(1).max(255).optional(),
+      description: z.string().max(500).optional(),
+      layout: z.enum(["grid", "stream", "freeform"]).optional(),
+      bgColor: z.string().optional(),
+      allowStudentCards: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.id);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+      const { id, allowStudentCards, ...rest } = input;
+      await updatePadletBoard(id, {
+        ...rest,
+        ...(allowStudentCards !== undefined ? { allowStudentCards: allowStudentCards ? 1 : 0 } : {}),
+      });
+      return { success: true };
+    }),
+
+  // حذف لوحة
+  deleteBoard: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.id);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+      await deletePadletBoard(input.id);
+      return { success: true };
+    }),
+
+  // حذف جميع اللوحات
+  deleteAllBoards: protectedProcedure.mutation(async ({ ctx }) => {
+    await deleteAllPadletBoardsByTeacher(ctx.user.id);
+    return { success: true };
+  }),
+
+  // جلب بطاقات لوحة (عام)
+  getCards: publicProcedure
+    .input(z.object({ boardId: z.number() }))
+    .query(async ({ input }) => {
+      return getPadletCardsByBoard(input.boardId);
+    }),
+
+  // إضافة بطاقة من المعلم
+  addTeacherCard: protectedProcedure
+    .input(z.object({
+      boardId: z.number(),
+      title: z.string().max(255).optional(),
+      content: z.string().max(2000).optional(),
+      imageUrl: z.string().optional(),
+      imageKey: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
+      return createPadletCard({ ...input, authorName: ctx.user.name || "المعلم", isTeacher: 1 });
+    }),
+
+  // إضافة بطاقة من طالب
+  addStudentCard: publicProcedure
+    .input(z.object({
+      boardId: z.number(),
+      studentName: z.string().min(1).max(255),
+      title: z.string().max(255).optional(),
+      content: z.string().max(2000).optional(),
+      imageUrl: z.string().optional(),
+      imageKey: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!board.allowStudentCards) throw new TRPCError({ code: "FORBIDDEN", message: "إضافة البطاقات معطلة حالياً" });
+      const { studentName, boardId, ...rest } = input;
+      return createPadletCard({ ...rest, boardId, authorName: studentName, isTeacher: 0 });
+    }),
+
+  // حذف بطاقة (للمعلم فقط)
+  deleteCard: protectedProcedure
+    .input(z.object({ cardId: z.number(), boardId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      await deletePadletCard(input.cardId);
+      return { success: true };
+    }),
+
+  // تثبيت/إلغاء تثبيت بطاقة
+  togglePin: protectedProcedure
+    .input(z.object({ cardId: z.number(), boardId: z.number(), isPinned: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      await updatePadletCard(input.cardId, { isPinned: input.isPinned ? 1 : 0 });
+      return { success: true };
+    }),
+
+  // إعجاب بطاقة
+  likeCard: publicProcedure
+    .input(z.object({ cardId: z.number() }))
+    .mutation(async ({ input }) => {
+      await likePadletCard(input.cardId);
+      return { success: true };
+    }),
+
+  // رفع صورة بطاقة
+  uploadCardImage: protectedProcedure
+    .input(z.object({
+      boardId: z.number(),
+      imageBase64: z.string(),
+      mimeType: z.string().default("image/jpeg"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const buffer = Buffer.from(input.imageBase64, "base64");
+      const key = `padlet/${ctx.user.id}/${Date.now()}.jpg`;
+      const { url } = await storagePut(key, buffer, input.mimeType);
+      return { url, key };
+    }),
+});
+
 
 export const appRouter = router({
   system: systemRouter,
@@ -690,6 +861,9 @@ export const appRouter = router({
         return { canvasData: session.canvasData, title: session.title };
       }),
   }),
+  padlet: padletRouter,
 });
 
+
+// ===== Padlet Router =====
 export type AppRouter = typeof appRouter;

@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -356,4 +356,91 @@ export async function deleteLiveSession(quizId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(liveQuizSessions).where(eq(liveQuizSessions.quizId, quizId));
+}
+
+// ===================== البادلت =====================
+
+export async function createPadletBoard(data: InsertPadletBoard) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(padletBoards).values(data);
+  const id = (result[0] as { insertId: number }).insertId;
+  const rows = await db.select().from(padletBoards).where(eq(padletBoards.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getPadletBoardsByTeacher(teacherId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(padletBoards).where(eq(padletBoards.teacherId, teacherId));
+}
+
+export async function getPadletBoardById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(padletBoards).where(eq(padletBoards.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getPadletBoardByCode(shareCode: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(padletBoards).where(eq(padletBoards.shareCode, shareCode)).limit(1);
+  return rows[0];
+}
+
+export async function updatePadletBoard(id: number, data: Partial<InsertPadletBoard>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(padletBoards).set(data).where(eq(padletBoards.id, id));
+}
+
+export async function deletePadletBoard(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(padletCards).where(eq(padletCards.boardId, id));
+  await db.delete(padletBoards).where(eq(padletBoards.id, id));
+}
+
+export async function deleteAllPadletBoardsByTeacher(teacherId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const boards = await db.select({ id: padletBoards.id }).from(padletBoards).where(eq(padletBoards.teacherId, teacherId));
+  for (const b of boards) {
+    await db.delete(padletCards).where(eq(padletCards.boardId, b.id));
+  }
+  await db.delete(padletBoards).where(eq(padletBoards.teacherId, teacherId));
+}
+
+export async function createPadletCard(data: InsertPadletCard) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(padletCards).values(data);
+  const id = (result[0] as { insertId: number }).insertId;
+  const rows = await db.select().from(padletCards).where(eq(padletCards.id, id)).limit(1);
+  return rows[0];
+}
+
+export async function getPadletCardsByBoard(boardId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(padletCards).where(eq(padletCards.boardId, boardId));
+}
+
+export async function deletePadletCard(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(padletCards).where(eq(padletCards.id, id));
+}
+
+export async function updatePadletCard(id: number, data: Partial<InsertPadletCard>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(padletCards).set(data).where(eq(padletCards.id, id));
+}
+
+export async function likePadletCard(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.execute(`UPDATE padlet_cards SET likes = likes + 1 WHERE id = ${id}`);
 }

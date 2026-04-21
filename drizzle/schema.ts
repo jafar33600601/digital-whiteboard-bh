@@ -122,3 +122,49 @@ export const liveQuizSessions = mysqlTable("live_quiz_sessions", {
 
 export type LiveQuizSession = typeof liveQuizSessions.$inferSelect;
 export type InsertLiveQuizSession = typeof liveQuizSessions.$inferInsert;
+
+// ===================== البادلت =====================
+
+// جدول لوحات البادلت (يُنشئها المعلم)
+export const padletBoards = mysqlTable("padlet_boards", {
+  id: int("id").autoincrement().primaryKey(),
+  shareCode: varchar("shareCode", { length: 32 }).notNull().unique(),
+  teacherId: int("teacherId").notNull(),
+  title: varchar("title", { length: 255 }).notNull().default("لوحة جديدة"),
+  description: text("description"),
+  // نوع اللوحة: grid=شبكة | stream=تيار | freeform=حر
+  layout: mysqlEnum("layout", ["grid", "stream", "freeform"]).default("grid").notNull(),
+  // لون خلفية اللوحة
+  bgColor: varchar("bgColor", { length: 32 }).default("#f8fafc").notNull(),
+  // هل يسمح للطلاب بإضافة بطاقات
+  allowStudentCards: int("allowStudentCards").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PadletBoard = typeof padletBoards.$inferSelect;
+export type InsertPadletBoard = typeof padletBoards.$inferInsert;
+
+// جدول بطاقات البادلت
+export const padletCards = mysqlTable("padlet_cards", {
+  id: int("id").autoincrement().primaryKey(),
+  boardId: int("boardId").notNull(),
+  // اسم منشئ البطاقة (المعلم أو اسم الطالب)
+  authorName: varchar("authorName", { length: 255 }).notNull(),
+  // هل البطاقة من المعلم (للتمييز)
+  isTeacher: int("isTeacher").default(0).notNull(),
+  title: varchar("title", { length: 255 }),
+  content: text("content"),
+  // رابط الصورة (S3)
+  imageUrl: text("imageUrl"),
+  imageKey: varchar("imageKey", { length: 512 }),
+  // عدد الإعجابات
+  likes: int("likes").default(0).notNull(),
+  // مثبتة (من المعلم)
+  isPinned: int("isPinned").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PadletCard = typeof padletCards.$inferSelect;
+export type InsertPadletCard = typeof padletCards.$inferInsert;

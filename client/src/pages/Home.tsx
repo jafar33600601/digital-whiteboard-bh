@@ -13,7 +13,12 @@ export default function Home() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; title: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [activeTab, setActiveTab] = useState<"boards" | "quizzes">("boards");
+  const [activeTab, setActiveTab] = useState<"boards" | "quizzes" | "padlet">("boards");
+  const [showCreatePadletForm, setShowCreatePadletForm] = useState(false);
+  const [newPadletTitle, setNewPadletTitle] = useState("");
+  const [isCreatingPadlet, setIsCreatingPadlet] = useState(false);
+  const [deletePadletConfirm, setDeletePadletConfirm] = useState<{ id: number; title: string } | null>(null);
+  const [isDeletingPadlet, setIsDeletingPadlet] = useState(false);
   const [showCreateQuizForm, setShowCreateQuizForm] = useState(false);
   const [newQuizTitle, setNewQuizTitle] = useState("");
   const [isCreatingQuiz, setIsCreatingQuiz] = useState(false);
@@ -28,9 +33,48 @@ export default function Home() {
   const { data: quizzes, isLoading: loadingQuizzes, refetch: refetchQuizzes } =
     trpc.quiz.getMyQuizzes.useQuery(undefined, { enabled: isAuthenticated });
 
+  const { data: padletBoards, isLoading: loadingPadlets, refetch: refetchPadlets } =
+    trpc.padlet.getMyBoards.useQuery(undefined, { enabled: isAuthenticated });
+
+  const createPadletMutation = trpc.padlet.createBoard.useMutation();
+  const deletePadletMutation = trpc.padlet.deleteBoard.useMutation();
+
   const createSessionMutation = trpc.whiteboard.createSession.useMutation();
   const createQuizMutation = trpc.quiz.createQuiz.useMutation();
   const deleteQuizMutation = trpc.quiz.deleteQuiz.useMutation();
+
+  const handleCreatePadlet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPadletTitle.trim()) return;
+    setIsCreatingPadlet(true);
+    try {
+      const board = await createPadletMutation.mutateAsync({ title: newPadletTitle.trim() });
+      toast.success("تم إنشاء اللوحة بنجاح!");
+      setShowCreatePadletForm(false);
+      setNewPadletTitle("");
+      refetchPadlets();
+      navigate(`/padlet/${board!.id}`);
+    } catch {
+      toast.error("حدث خطأ أثناء إنشاء اللوحة");
+    } finally {
+      setIsCreatingPadlet(false);
+    }
+  };
+
+  const handleDeletePadlet = async () => {
+    if (!deletePadletConfirm) return;
+    setIsDeletingPadlet(true);
+    try {
+      await deletePadletMutation.mutateAsync({ id: deletePadletConfirm.id });
+      toast.success("تم حذف اللوحة بنجاح");
+      setDeletePadletConfirm(null);
+      refetchPadlets();
+    } catch {
+      toast.error("حدث خطأ أثناء حذف اللوحة");
+    } finally {
+      setIsDeletingPadlet(false);
+    }
+  };
 
   const handleCreateQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -274,6 +318,15 @@ export default function Home() {
                 </svg>
                 اختبار جديد
               </button>
+              <button
+                onClick={() => setShowCreatePadletForm(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-l from-violet-600 to-purple-600 text-white font-bold rounded-xl hover:opacity-90 transition-all hover:shadow-lg hover:shadow-violet-200 text-sm"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                لوحة بادلت
+              </button>
             </div>
           </div>
 
@@ -306,6 +359,19 @@ export default function Home() {
                 <span className="mr-1.5 bg-emerald-100 text-emerald-600 text-xs px-1.5 py-0.5 rounded-full">{quizzes.length}</span>
               )}
              </button>
+            <button
+              onClick={() => setActiveTab("padlet")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === "padlet"
+                  ? "bg-white text-violet-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              📋 البادلت
+              {padletBoards && padletBoards.length > 0 && (
+                <span className="mr-1.5 bg-violet-100 text-violet-600 text-xs px-1.5 py-0.5 rounded-full">{padletBoards.length}</span>
+              )}
+            </button>
           </div>
           {/* زر الحذف الجماعي */}
           {activeTab === "boards" && sessions && sessions.length > 0 && (
@@ -608,6 +674,155 @@ export default function Home() {
                 </div>
               )}
             </>
+          )}
+
+          {/* ===== قسم البادلت ===== */}
+          {activeTab === "padlet" && (
+            <>
+              {loadingPadlets ? (
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full" />
+                </div>
+              ) : !padletBoards || padletBoards.length === 0 ? (
+                <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                  <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="1.5">
+                      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-700 mb-2">لا توجد لوحات بعد</h3>
+                  <p className="text-slate-500 mb-6">أنشئ أول لوحة بادلت تفاعلية لطلابك</p>
+                  <button
+                    onClick={() => setShowCreatePadletForm(true)}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-l from-violet-600 to-purple-600 text-white font-bold rounded-xl hover:opacity-90 transition-opacity"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    إنشاء أول لوحة
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {padletBoards.map(board => (
+                    <div key={board.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden group" style={{ borderTop: `4px solid ${board.bgColor === '#f8fafc' ? '#7c3aed' : board.bgColor}` }}>
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-2">
+                          <button
+                            onClick={() => setDeletePadletConfirm({ id: board.id, title: board.title })}
+                            title="حذف اللوحة"
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                            </svg>
+                          </button>
+                          <div className="flex-1 text-right">
+                            <h3 className="font-bold text-slate-800 truncate">{board.title}</h3>
+                            <div className="flex items-center gap-2 mt-1 justify-end">
+                              <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-mono">{board.shareCode}</span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${board.allowStudentCards ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                                {board.allowStudentCards ? 'مفتوح' : 'مغلق'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="px-4 pb-4 flex gap-2">
+                        <button
+                          onClick={() => navigate(`/padlet/${board.id}`)}
+                          className="flex-1 py-2 bg-violet-50 text-violet-700 font-semibold rounded-lg text-sm hover:bg-violet-100 transition-colors flex items-center justify-center gap-1"
+                        >
+                          فتح اللوحة
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* مودال إنشاء لوحة بادلت */}
+          {showCreatePadletForm && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
+                <div className="bg-gradient-to-l from-violet-600 to-purple-600 p-6 text-white">
+                  <h2 className="text-xl font-bold">إنشاء لوحة بادلت جديدة</h2>
+                  <p className="text-violet-200 text-sm mt-1">أدخل عنواناً للوحة</p>
+                </div>
+                <form onSubmit={handleCreatePadlet} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">عنوان اللوحة</label>
+                    <input
+                      type="text"
+                      value={newPadletTitle}
+                      onChange={e => setNewPadletTitle(e.target.value)}
+                      placeholder="مثال: آراءكم حول الدرس"
+                      required
+                      autoFocus
+                      className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-violet-400 transition-colors text-right"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={isCreatingPadlet || !newPadletTitle.trim()}
+                      className="flex-1 py-3 bg-gradient-to-l from-violet-600 to-purple-600 text-white font-bold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isCreatingPadlet ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                      {isCreatingPadlet ? "جاري الإنشاء..." : "إنشاء اللوحة"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowCreatePadletForm(false); setNewPadletTitle(""); }}
+                      className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 transition-colors"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* مودال تأكيد حذف اللوحة */}
+          {deletePadletConfirm && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" dir="rtl">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div className="bg-gradient-to-l from-red-500 to-rose-600 p-6 text-white">
+                  <h2 className="text-xl font-bold">حذف اللوحة</h2>
+                  <p className="text-red-100 text-sm mt-1">هذا الإجراء لا يمكن التراجع عنه</p>
+                </div>
+                <div className="p-6">
+                  <p className="text-slate-700 font-medium mb-1">هل أنت متأكد من حذف:</p>
+                  <p className="text-slate-900 font-bold text-lg mb-4">"{deletePadletConfirm.title}"</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleDeletePadlet}
+                      disabled={isDeletingPadlet}
+                      className="flex-1 py-3 bg-gradient-to-l from-red-500 to-rose-600 text-white font-bold rounded-xl hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isDeletingPadlet ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : null}
+                      {isDeletingPadlet ? "جاري الحذف..." : "نعم، احذف"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletePadletConfirm(null)}
+                      disabled={isDeletingPadlet}
+                      className="px-4 py-3 border-2 border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* مودال إنشاء اختبار جديد */}
