@@ -102,6 +102,10 @@ function LiveQuizStudentRoute({ params }: { params?: { code?: string } }) {
   return <LiveQuizStudent quizId={quiz.id} shareCode={shareCode} />;
 }
 
+function PadletStudentJoinRoute({ params }: { params?: { code?: string } }) {
+  return <PadletStudent initialCode={params?.code} />;
+}
+
 function PadletBoardRoute({ params }: { params?: { id?: string } }) {
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full" /></div>;
@@ -122,7 +126,8 @@ function Router() {
       <Route path="/quiz-live/:id" component={LiveQuizHostRoute} />
       <Route path="/quiz-join/:code" component={LiveQuizStudentRoute} />
       <Route path="/padlet/:id" component={PadletBoardRoute} />
-      <Route path="/padlet-join" component={PadletStudent} />
+      <Route path="/padlet-join" component={() => <PadletStudent />} />
+      <Route path="/padlet-join/:code" component={PadletStudentJoinRoute} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

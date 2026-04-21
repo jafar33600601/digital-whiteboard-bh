@@ -35,6 +35,48 @@ const BG_COLORS = [
   { label: "بنفسجي فاتح", value: "#faf5ff" },
 ];
 
+function exportToPDF(cards: Card[], board: { title: string; shareCode: string; description?: string | null }) {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
+
+  const rows = cards.map(card => `
+    <div style="border:1px solid #e2e8f0;border-radius:12px;padding:16px;margin-bottom:12px;background:#fff;page-break-inside:avoid">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        ${card.isPinned ? '<span style="background:#fef3c7;color:#d97706;padding:2px 8px;border-radius:20px;font-size:12px">📌 مثبت</span>' : ''}
+        <span style="background:${card.isTeacher ? '#ede9fe' : '#f0fdf4'};color:${card.isTeacher ? '#7c3aed' : '#16a34a'};padding:2px 8px;border-radius:20px;font-size:12px">${card.isTeacher ? '👨‍🏫 معلم' : '👨‍🎓 ' + card.authorName}</span>
+        <span style="color:#94a3b8;font-size:12px;margin-right:auto">${new Date(card.createdAt).toLocaleDateString('ar-SA')}</span>
+      </div>
+      ${card.title ? `<h3 style="font-size:16px;font-weight:bold;color:#1e293b;margin:0 0 6px">${card.title}</h3>` : ''}
+      ${card.content ? `<p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 8px;white-space:pre-wrap">${card.content}</p>` : ''}
+      ${card.imageUrl ? `<img src="${card.imageUrl}" style="max-width:100%;border-radius:8px;margin-top:8px" />` : ''}
+      ${card.likes > 0 ? `<div style="margin-top:8px;color:#94a3b8;font-size:12px">❤️ ${card.likes}</div>` : ''}
+    </div>
+  `).join("");
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="UTF-8">
+      <title>لوحة بادلت - ${board.title}</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; background: #f8fafc; color: #1e293b; direction: rtl; }
+        h1 { font-size: 24px; font-weight: bold; margin-bottom: 4px; }
+        .meta { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+        @media print { body { background: white; } }
+      </style>
+    </head>
+    <body>
+      <h1>📋 ${board.title}</h1>
+      <div class="meta">كود اللوحة: ${board.shareCode} &nbsp;|عدد البطاقات: ${cards.length}</div>
+      ${rows}
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+  setTimeout(() => printWindow.print(), 500);
+}
+
 export default function PadletBoard() {
   const { id } = useParams<{ id: string }>();
   const boardId = parseInt(id || "0");
@@ -180,6 +222,25 @@ export default function PadletBoard() {
             <Badge variant={board.allowStudentCards ? "default" : "secondary"} className="text-xs">
               {board.allowStudentCards ? "مفتوح للطلاب" : "مغلق"}
             </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const url = `${window.location.origin}/padlet-join/${board.shareCode}`;
+                navigator.clipboard.writeText(url).then(() => toast.success("تم نسخ رابط الطالب \u2705"));
+              }}
+              className="text-violet-700 border-violet-200 hover:bg-violet-50"
+            >
+              🔗 رابط الطالب
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => exportToPDF(sortedCards, board)}
+              className="text-slate-700 border-slate-200 hover:bg-slate-50"
+            >
+              📄 تصدير PDF
+            </Button>
             <Button variant="outline" size="sm" onClick={openSettings}>⚙️ إعدادات</Button>
             <Button size="sm" onClick={() => setShowAddCard(true)} className="bg-violet-600 hover:bg-violet-700 text-white">
               + بطاقة

@@ -25,9 +25,9 @@ type Card = {
 
 type Phase = "join" | "board";
 
-export default function PadletStudent() {
+export default function PadletStudent({ initialCode }: { initialCode?: string }) {
   const [phase, setPhase] = useState<Phase>("join");
-  const [shareCode, setShareCode] = useState("");
+  const [shareCode, setShareCode] = useState(initialCode ?? "");
   const [studentName, setStudentName] = useState("");
   const [boardId, setBoardId] = useState<number | null>(null);
   const [boardData, setBoardData] = useState<{ title: string; bgColor: string; layout: string; allowStudentCards: number; shareCode: string } | null>(null);
