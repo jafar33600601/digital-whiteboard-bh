@@ -376,7 +376,8 @@ const quizRouter = router({
     }))
     .mutation(async ({ input }) => {
       const session = await getLiveSessionByQuiz(input.quizId);
-      if (!session || session.state !== "question") throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكن الإجابة الآن" });
+      // السماح بالإجابة في حالة question أو results (لفترة قصيرة بعد انتهاء الوقت)
+      if (!session || (session.state !== "question" && session.state !== "results")) throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكن الإجابة الآن" });
       const currentAnswers = JSON.parse(session.currentAnswers || "[]") as { studentName: string; answerIndex: number; timeMs: number }[];
       // منع الإجابة المكررة
       if (currentAnswers.find(a => a.studentName === input.studentName)) {

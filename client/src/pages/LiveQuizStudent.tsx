@@ -106,7 +106,8 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
   }, [liveState?.state, liveState?.currentQuestionIndex, liveState?.questionStartedAt]);
 
   const handleAnswer = (answerIndex: number) => {
-    if (selectedAnswer !== null || !liveState || liveState.state !== "question") return;
+    // السماح بالإجابة في حالة question أو results (لفترة قصيرة بعد انتهاء الوقت)
+    if (selectedAnswer !== null || !liveState || (liveState.state !== "question" && liveState.state !== "results")) return;
     setSelectedAnswer(answerIndex);
     const timeMs = liveState.questionStartedAt
       ? Date.now() - new Date(liveState.questionStartedAt).getTime()
@@ -229,7 +230,7 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
               <button
                 key={i}
                 onClick={() => handleAnswer(i)}
-                disabled={timeLeft === 0}
+                disabled={timeLeft === 0 && liveState.state === "question"}
                 className="rounded-2xl p-5 text-white font-bold flex items-center justify-center active:scale-95 transition-transform shadow-lg disabled:opacity-50"
                 style={{ backgroundColor: COLORS[i] }}
               >
@@ -249,6 +250,11 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
                 </p>
                 <p className="text-white/70">في انتظار السؤال التالي...</p>
               </>
+            ) : submitLiveAnswer.isPending ? (
+              <>
+                <div className="text-6xl animate-pulse">⏱️</div>
+                <p className="text-white text-xl">جاري تسجيل الإجابة...</p>
+              </>
             ) : (
               <>
                 <div className="text-6xl animate-pulse">⏱️</div>
@@ -267,33 +273,64 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
     const currentQ = quiz.questions[liveState.currentQuestionIndex];
     const rawOptions = currentQ ? (currentQ as unknown as { options: string | string[] }).options : [];
     const options: string[] = Array.isArray(rawOptions) ? rawOptions : JSON.parse(rawOptions as string) as string[];
-    const correctAnswer = -1; // correctAnswer not exposed to students for security
     const myAnswer = liveState.currentAnswers.find(a => a.studentName === studentName);
+    const hasAnsweredInResults = myAnswer !== undefined || selectedAnswer !== null;
 
+    // إذا لم يُجب بعد، أعطه فرصة للإجابة
+    if (!hasAnsweredInResults) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex flex-col p-4 gap-4" dir="rtl">
+          <div className="flex items-center justify-between">
+            <Badge className="bg-white/20 text-white border-white/30">
+              سؤال {liveState.currentQuestionIndex + 1} / {quiz.questions.length}
+            </Badge>
+            <div className="flex items-center gap-2 text-xl font-black text-red-400">
+              <Clock className="w-5 h-5" />
+              انتهى الوقت
+            </div>
+          </div>
+          <div className="h-2 bg-red-500/50 rounded-full" />
+          <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
+            <CardContent className="p-4">
+              <h2 className="text-xl font-bold text-white text-center">
+                {(currentQ as { questionText: string }).questionText}
+              </h2>
+            </CardContent>
+          </Card>
+          <div className="grid grid-cols-2 gap-3 flex-1">
+            {options.map((opt: string, i: number) => (
+              <button
+                key={i}
+                onClick={() => handleAnswer(i)}
+                className="rounded-2xl p-5 text-white font-bold flex items-center justify-center active:scale-95 transition-transform shadow-lg"
+                style={{ backgroundColor: COLORS[i] }}
+              >
+                <span className="text-2xl font-bold text-center leading-snug">{opt}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // أجاب بالفعل - عرض حالة الانتظار
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex flex-col items-center justify-center gap-6 p-6" dir="rtl">
-        <h2 className="text-2xl font-bold text-white">نتائج السؤال</h2>
-        <div className="w-full max-w-md flex flex-col gap-3">
-          {options.map((opt: string, i: number) => {
-            const isCorrect = i === correctAnswer;
-            const isMyAnswer = myAnswer?.answerIndex === i;
-            return (
-              <div
-                key={i}
-                className={`rounded-xl p-4 flex items-center gap-3 border-2 ${
-                  isCorrect ? "border-green-400 bg-green-500/20" :
-                  isMyAnswer ? "border-red-400 bg-red-500/20" :
-                  "border-white/20 bg-white/10"
-                }`}
-              >
-                <span className="text-white font-bold text-lg">{OPTION_LABELS[i]}</span>
-                <span className="text-white flex-1">{opt}</span>
-                {isCorrect && <CheckCircle className="text-green-400 w-5 h-5" />}
-                {isMyAnswer && !isCorrect && <XCircle className="text-red-400 w-5 h-5" />}
-              </div>
-            );
-          })}
-        </div>
+        {answerResult ? (
+          <>
+            <div className={`text-8xl ${answerResult.isCorrect ? "animate-bounce" : ""}`}>
+              {answerResult.isCorrect ? "✅" : "❌"}
+            </div>
+            <p className={`text-2xl font-bold ${answerResult.isCorrect ? "text-green-400" : "text-red-400"}`}>
+              {answerResult.isCorrect ? "إجابة صحيحة! 🎉" : "إجابة خاطئة"}
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="text-6xl animate-pulse">⏱️</div>
+            <p className="text-white text-xl">تم تسجيل إجابتك!</p>
+          </>
+        )}
         <p className="text-white/70 animate-pulse">في انتظار السؤال التالي...</p>
       </div>
     );
