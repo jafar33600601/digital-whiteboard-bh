@@ -28,6 +28,7 @@ type Card = {
 type Phase = "join" | "board";
 
 export default function PadletStudent({ initialCode }: { initialCode?: string }) {
+  const hasDirectLink = !!initialCode; // جاء عبر رابط مباشر
   const [phase, setPhase] = useState<Phase>("join");
   const [shareCode, setShareCode] = useState(initialCode ?? "");
   const [studentName, setStudentName] = useState("");
@@ -101,19 +102,24 @@ export default function PadletStudent({ initialCode }: { initialCode?: string })
           <div className="text-center mb-8">
             <div className="text-6xl mb-3">📋</div>
             <h1 className="text-2xl font-bold text-slate-800">انضم للبادلت</h1>
-            <p className="text-slate-500 text-sm mt-1">أدخل الكود الذي أعطاك إياه معلمك</p>
+            <p className="text-slate-500 text-sm mt-1">
+              {hasDirectLink ? "أدخل اسمك للانضمام" : "أدخل الكود الذي أعطاك إياه معلمك"}
+            </p>
           </div>
           <div className="space-y-4">
-            <div>
-              <Label className="text-sm font-medium text-slate-700">كود اللوحة</Label>
-              <Input
-                value={shareCode}
-                onChange={(e) => setShareCode(e.target.value)}
-                placeholder="مثال: abc123xyz"
-                className="mt-1 text-center text-lg font-mono tracking-widest"
-                onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-              />
-            </div>
+            {/* حقل الكود — يُخفى عند الدخول عبر رابط مباشر */}
+            {!hasDirectLink && (
+              <div>
+                <Label className="text-sm font-medium text-slate-700">كود اللوحة</Label>
+                <Input
+                  value={shareCode}
+                  onChange={(e) => setShareCode(e.target.value)}
+                  placeholder="مثال: abc123xyz"
+                  className="mt-1 text-center text-lg font-mono tracking-widest"
+                  onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+                />
+              </div>
+            )}
             <div>
               <Label className="text-sm font-medium text-slate-700">اسمك</Label>
               <Input
