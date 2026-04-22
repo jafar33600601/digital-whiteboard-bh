@@ -274,8 +274,10 @@ export default function PadletBoard() {
                 key={card.id}
                 card={card}
                 isTeacherView={true}
+                boardId={boardId}
                 onDelete={() => deleteCardMut.mutate({ cardId: card.id, boardId })}
                 onTogglePin={() => togglePinMut.mutate({ cardId: card.id, boardId, isPinned: card.isPinned === 0 })}
+                onCommentSaved={() => refetchCards()}
               />
             ))}
           </div>
