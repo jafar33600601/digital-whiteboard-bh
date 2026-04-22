@@ -526,19 +526,8 @@ export default function Home() {
                   {sessions!.map(session => (
                 <div
                   key={session.id}
-                  className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden relative"
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden"
                 >
-                  {/* زر الحذف ثابت في الزاوية */}
-                  <button
-                    onClick={() => setDeleteConfirm({ id: session.id, title: session.title })}
-                    title="حذف السبورة"
-                    className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all bg-white/80 shadow-sm"
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                    </svg>
-                  </button>
                   <div className="bg-gradient-to-l from-indigo-500/10 to-purple-500/10 p-5 border-b border-slate-100">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -578,6 +567,16 @@ export default function Home() {
                       </svg>
                       الإجابات
                     </button>
+                    <button
+                      onClick={() => setDeleteConfirm({ id: session.id, title: session.title })}
+                      title="حذف السبورة"
+                      className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -613,18 +612,7 @@ export default function Home() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {quizzes.map(quiz => (
-                    <div key={quiz.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden relative">
-                      {/* زر الحذف ثابت في الزاوية */}
-                      <button
-                        onClick={() => setDeleteQuizConfirm({ id: quiz.id, title: quiz.title })}
-                        title="حذف الاختبار"
-                        className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all bg-white/80 shadow-sm"
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                      </button>
+                    <div key={quiz.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden">
                       <div className="bg-gradient-to-l from-emerald-500/10 to-teal-500/10 p-5 border-b border-slate-100">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -665,6 +653,16 @@ export default function Home() {
                           </svg>
                           النتائج
                         </button>
+                        <button
+                          onClick={() => setDeleteQuizConfirm({ id: quiz.id, title: quiz.title })}
+                          title="حذف الاختبار"
+                          className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -702,17 +700,7 @@ export default function Home() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {padletBoards.map(board => (
-                    <div key={board.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden relative" style={{ borderTop: `4px solid ${board.bgColor === '#f8fafc' ? '#7c3aed' : board.bgColor}` }}>
-                      {/* زر الحذف ثابت في الزاوية */}
-                      <button
-                        onClick={() => setDeletePadletConfirm({ id: board.id, title: board.title })}
-                        title="حذف اللوحة"
-                        className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all bg-white/80 shadow-sm"
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                        </svg>
-                      </button>
+                    <div key={board.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden" style={{ borderTop: `4px solid ${board.bgColor === '#f8fafc' ? '#7c3aed' : board.bgColor}` }}>
                       <div className="p-5">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 text-right">
@@ -737,6 +725,15 @@ export default function Home() {
                           className="flex-1 py-2 bg-violet-50 text-violet-700 font-semibold rounded-lg text-sm hover:bg-violet-100 transition-colors flex items-center justify-center gap-1"
                         >
                           فتح اللوحة
+                        </button>
+                        <button
+                          onClick={() => setDeletePadletConfirm({ id: board.id, title: board.title })}
+                          title="حذف اللوحة"
+                          className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all flex-shrink-0"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                          </svg>
                         </button>
                       </div>
                     </div>
