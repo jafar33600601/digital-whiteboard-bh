@@ -183,6 +183,21 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
+  // confetti عند ظهور المنصة - يجب أن يكون هنا وليس داخل شرط
+  useEffect(() => {
+    if (liveState?.state !== "leaderboard") return;
+    const duration = 4000;
+    const end = Date.now() + duration;
+    const colors = ["#ffd700", "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ff9ff3", "#ffeaa7"];
+    const frame = () => {
+      confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0 }, colors });
+      confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
+    confetti({ particleCount: 120, spread: 100, origin: { y: 0.6 }, colors });
+  }, [liveState?.state]);
+
   if (!quiz) return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
       <div className="text-white text-xl animate-pulse">جاري التحميل...</div>
@@ -483,22 +498,6 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
     const rest = sorted.slice(3);
     // ترتيب منصة التتويج: الثاني يسار - الأول وسط (أعلى) - الثالث يمين
     const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
-
-    // تشغيل confetti عند ظهور المنصة
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
-      const duration = 4000;
-      const end = Date.now() + duration;
-      const colors = ["#ffd700", "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ff9ff3", "#ffeaa7"];
-      const frame = () => {
-        confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0 }, colors });
-        confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
-        if (Date.now() < end) requestAnimationFrame(frame);
-      };
-      frame();
-      // انفجار احتفالي في البداية
-      confetti({ particleCount: 120, spread: 100, origin: { y: 0.6 }, colors });
-    }, []);
 
     const podiumHeights = ["h-28", "h-40", "h-20"];
     const podiumColors = ["bg-gray-400", "bg-yellow-400", "bg-orange-400"];
