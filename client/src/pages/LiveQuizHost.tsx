@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import confetti from "canvas-confetti";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -482,6 +483,23 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
     const rest = sorted.slice(3);
     // ترتيب منصة التتويج: الثاني يسار - الأول وسط (أعلى) - الثالث يمين
     const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
+
+    // تشغيل confetti عند ظهور المنصة
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      const duration = 4000;
+      const end = Date.now() + duration;
+      const colors = ["#ffd700", "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ff9ff3", "#ffeaa7"];
+      const frame = () => {
+        confetti({ particleCount: 6, angle: 60, spread: 55, origin: { x: 0 }, colors });
+        confetti({ particleCount: 6, angle: 120, spread: 55, origin: { x: 1 }, colors });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
+      frame();
+      // انفجار احتفالي في البداية
+      confetti({ particleCount: 120, spread: 100, origin: { y: 0.6 }, colors });
+    }, []);
+
     const podiumHeights = ["h-28", "h-40", "h-20"];
     const podiumColors = ["bg-gray-400", "bg-yellow-400", "bg-orange-400"];
     const podiumBorders = ["border-gray-300", "border-yellow-300", "border-orange-300"];
@@ -547,7 +565,7 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
             size="lg"
             variant="outline"
             className="border-white/30 text-white hover:bg-white/10"
-            onClick={() => setLocation(`/quiz-results/${quizId}`)}
+            onClick={() => setLocation(`/quiz-live-results/${quizId}`)}
           >
             <BarChart3 className="ml-2 w-5 h-5" />
             النتائج التفصيلية

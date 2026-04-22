@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import confetti from "canvas-confetti";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -476,6 +477,23 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
     const rest = sorted.slice(3);
     // منصة التتويج: الثاني يسار - الأول وسط (أعلى) - الثالث يمين
     const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
+
+    // تشغيل confetti عند ظهور المنصة
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useEffect(() => {
+      const duration = 4000;
+      const end = Date.now() + duration;
+      const colors = ["#ffd700", "#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ff9ff3", "#ffeaa7"];
+      // انفجار احتفالي في البداية
+      confetti({ particleCount: 120, spread: 100, origin: { y: 0.6 }, colors });
+      const frame = () => {
+        confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors });
+        confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      };
+      frame();
+    }, []);
+
     const podiumHeights = ["h-24", "h-36", "h-16"];
     const podiumColors = ["bg-gray-400", "bg-yellow-400", "bg-orange-400"];
     const podiumBorders = ["border-gray-300", "border-yellow-300", "border-orange-300"];

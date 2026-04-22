@@ -535,6 +535,20 @@ const quizRouter = router({
       return { success: true };
     }),
 
+  // جلب نتائج الكاهوت النهائية مرتبة من الأعلى للأدنى
+  getLiveResults: protectedProcedure
+    .input(z.object({ quizId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const session = await getLiveSessionByQuiz(input.quizId);
+      if (!session) return { participants: [], quizTitle: quiz.title };
+      const participants = JSON.parse(session.participants || "[]") as { name: string; score: number }[];
+      const sorted = [...participants].sort((a, b) => b.score - a.score);
+      return { participants: sorted, quizTitle: quiz.title };
+    }),
+
   // حالة الجلسة المباشرة للطالب (تشمل kickedParticipants)
   getLiveStateStudent: publicProcedure
     .input(z.object({ quizId: z.number(), studentName: z.string() }))

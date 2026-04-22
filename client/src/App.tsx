@@ -13,6 +13,7 @@ import QuizStudent from "./pages/QuizStudent";
 import QuizResults from "./pages/QuizResults";
 import LiveQuizHost from "./pages/LiveQuizHost";
 import LiveQuizStudent from "./pages/LiveQuizStudent";
+import LiveQuizResults from "./pages/LiveQuizResults";
 import PadletBoard from "./pages/PadletBoard";
 import PadletStudent from "./pages/PadletStudent";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -91,6 +92,14 @@ function LiveQuizHostRoute({ params }: { params?: { id?: string } }) {
   return <LiveQuizHost quizId={quizId} />;
 }
 
+function LiveQuizResultsRoute({ params }: { params?: { id?: string } }) {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
+  if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
+  const quizId = params?.id ? parseInt(params.id) : 0;
+  return <LiveQuizResults quizId={quizId} />;
+}
+
 function LiveQuizStudentRoute({ params }: { params?: { code?: string } }) {
   const shareCode = params?.code ?? "";
   const { data: quiz } = trpc.quiz.getQuizByCode.useQuery({ shareCode }, { enabled: !!shareCode });
@@ -124,6 +133,7 @@ function Router() {
       <Route path="/quiz-results/:id" component={QuizResultsRoute} />
       <Route path="/quiz/:code" component={QuizStudent} />
       <Route path="/quiz-live/:id" component={LiveQuizHostRoute} />
+      <Route path="/quiz-live-results/:id" component={LiveQuizResultsRoute} />
       <Route path="/quiz-join/:code" component={LiveQuizStudentRoute} />
       <Route path="/padlet/:id" component={PadletBoardRoute} />
       <Route path="/padlet-join" component={() => <PadletStudent />} />

@@ -523,26 +523,24 @@ export default function Home() {
             </div>
           ) : activeTab === "boards" ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sessions!.map(session => (
+                  {sessions!.map(session => (
                 <div
                   key={session.id}
-                  className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden group"
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden relative"
                 >
+                  {/* زر الحذف ثابت في الزاوية */}
+                  <button
+                    onClick={() => setDeleteConfirm({ id: session.id, title: session.title })}
+                    title="حذف السبورة"
+                    className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all bg-white/80 shadow-sm"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                    </svg>
+                  </button>
                   <div className="bg-gradient-to-l from-indigo-500/10 to-purple-500/10 p-5 border-b border-slate-100">
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {/* زر الحذف */}
-                        <button
-                          onClick={() => setDeleteConfirm({ id: session.id, title: session.title })}
-                          title="حذف السبورة"
-                          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                          </svg>
-                        </button>
-                      </div>
                       <div className="flex items-start gap-2 flex-1 min-w-0">
                         <div className="flex-1 min-w-0 text-right">
                           <h3 className="font-bold text-slate-800 truncate">{session.title}</h3>
@@ -615,21 +613,20 @@ export default function Home() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {quizzes.map(quiz => (
-                    <div key={quiz.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden group">
+                    <div key={quiz.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden relative">
+                      {/* زر الحذف ثابت في الزاوية */}
+                      <button
+                        onClick={() => setDeleteQuizConfirm({ id: quiz.id, title: quiz.title })}
+                        title="حذف الاختبار"
+                        className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all bg-white/80 shadow-sm"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                      </button>
                       <div className="bg-gradient-to-l from-emerald-500/10 to-teal-500/10 p-5 border-b border-slate-100">
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setDeleteQuizConfirm({ id: quiz.id, title: quiz.title })}
-                              title="حذف الاختبار"
-                              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                            >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                              </svg>
-                            </button>
-                          </div>
                           <div className="flex items-start gap-2 flex-1 min-w-0">
                             <div className="flex-1 min-w-0 text-right">
                               <h3 className="font-bold text-slate-800 truncate">{quiz.title}</h3>
@@ -705,18 +702,19 @@ export default function Home() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {padletBoards.map(board => (
-                    <div key={board.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden group" style={{ borderTop: `4px solid ${board.bgColor === '#f8fafc' ? '#7c3aed' : board.bgColor}` }}>
+                    <div key={board.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 overflow-hidden relative" style={{ borderTop: `4px solid ${board.bgColor === '#f8fafc' ? '#7c3aed' : board.bgColor}` }}>
+                      {/* زر الحذف ثابت في الزاوية */}
+                      <button
+                        onClick={() => setDeletePadletConfirm({ id: board.id, title: board.title })}
+                        title="حذف اللوحة"
+                        className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all bg-white/80 shadow-sm"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                      </button>
                       <div className="p-5">
                         <div className="flex items-start justify-between gap-2">
-                          <button
-                            onClick={() => setDeletePadletConfirm({ id: board.id, title: board.title })}
-                            title="حذف اللوحة"
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                            </svg>
-                          </button>
                           <div className="flex-1 text-right">
                             <h3 className="font-bold text-slate-800 truncate">{board.title}</h3>
                             <div className="flex items-center gap-2 mt-1 justify-end">
