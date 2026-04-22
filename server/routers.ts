@@ -392,12 +392,32 @@ const quizRouter = router({
         await updateLiveSession(session.id, { state: "leaderboard", currentAnswers: "[]" });
         return { state: "leaderboard", questionIndex: nextIndex };
       }
+      // عند بدء المسابقة (السؤال الأول): ابدأ بحالة countdown لمدة 5 ثواني
+      if (session.state === "waiting") {
+        await updateLiveSession(session.id, {
+          state: "countdown",
+          currentQuestionIndex: nextIndex,
+          currentAnswers: "[]",
+          isLocked: 1,
+        });
+        // بعد 5 ثواني انتقل للسؤال تلقائياً
+        setTimeout(async () => {
+          const sess = await getLiveSessionByQuiz(input.quizId);
+          if (sess && sess.state === "countdown") {
+            await updateLiveSession(sess.id, {
+              state: "question",
+              questionStartedAt: new Date(),
+            });
+          }
+        }, 5000);
+        return { state: "countdown", questionIndex: nextIndex };
+      }
       await updateLiveSession(session.id, {
         state: "question",
         currentQuestionIndex: nextIndex,
         questionStartedAt: new Date(),
         currentAnswers: "[]",
-        isLocked: 1, // قفل الجلسة فور بدء الأسئلة
+        isLocked: 1,
       });
       return { state: "question", questionIndex: nextIndex };
     }),

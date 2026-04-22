@@ -1,0 +1,1 @@
+ALTER TABLE `live_quiz_sessions` MODIFY COLUMN `state` enum('waiting','countdown','question','results','leaderboard','ended') NOT NULL DEFAULT 'waiting';

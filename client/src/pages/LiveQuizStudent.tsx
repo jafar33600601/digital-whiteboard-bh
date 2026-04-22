@@ -15,13 +15,61 @@ interface LiveQuizStudentProps {
 
 type LiveState = {
   id: number;
-  state: "waiting" | "question" | "results" | "leaderboard" | "ended";
+  state: "waiting" | "countdown" | "question" | "results" | "leaderboard" | "ended";
   currentQuestionIndex: number;
   questionStartedAt: Date | null;
   participants: { name: string; score: number }[];
   currentAnswers: { studentName: string; answerIndex: number; timeMs: number }[];
   timeLimitSeconds: number; // 0 = بلا حد زمني
 };
+
+// شاشة العد التنازلي 5-4-3-2-1 للطالب
+function StudentCountdownScreen({ studentName }: { studentName: string }) {
+  const [count, setCount] = useState(5);
+  useEffect(() => {
+    if (count <= 0) return;
+    const t = setTimeout(() => setCount(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [count]);
+
+  const colors = ["#e74c3c", "#e67e22", "#f1c40f", "#2ecc71", "#3498db"];
+  const bgColor = count > 0 ? colors[5 - count] : "#9b59b6";
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center gap-6 transition-colors duration-500"
+      style={{ background: `linear-gradient(135deg, ${bgColor}dd, ${bgColor}88)` }}
+      dir="rtl"
+    >
+      <p className="text-white/80 text-xl font-bold">مرحباً {studentName}! يبدأ الاختبار خلال...</p>
+      {count > 0 ? (
+        <div
+          key={count}
+          className="text-white font-black flex items-center justify-center rounded-full shadow-2xl"
+          style={{
+            fontSize: "12rem",
+            width: "18rem",
+            height: "18rem",
+            background: "rgba(0,0,0,0.25)",
+            animation: "countPop 0.9s ease-out",
+          }}
+        >
+          {count}
+        </div>
+      ) : (
+        <div className="text-white font-black text-8xl animate-bounce">🚀</div>
+      )}
+      <p className="text-white/60 text-sm">جهز للإجابة!</p>
+      <style>{`
+        @keyframes countPop {
+          0% { transform: scale(1.6); opacity: 0.5; }
+          60% { transform: scale(0.95); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 const COLORS = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"];
 const OPTION_LABELS = ["أ", "ب", "ج", "د", "هـ", "و"];
@@ -222,6 +270,11 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
     );
   }
 
+  // عد تنازلي 5-4-3-2-1 عند بدء المسابقة
+  if (liveState?.state === "countdown") {
+    return <StudentCountdownScreen studentName={studentName} />;
+  }
+
   // انتظار بداية الأسئلة
   if (!liveState || liveState.state === "waiting") {
     return (
@@ -419,36 +472,70 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
     const sorted = [...liveState.participants].sort((a, b) => b.score - a.score);
     const myRank = sorted.findIndex(p => p.name === studentName) + 1;
     const myScore = sorted.find(p => p.name === studentName)?.score ?? 0;
-    const medals = ["🥇", "🥈", "🥉"];
+    const top3 = sorted.slice(0, 3);
+    const rest = sorted.slice(3);
+    // منصة التتويج: الثاني يسار - الأول وسط (أعلى) - الثالث يمين
+    const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
+    const podiumHeights = ["h-24", "h-36", "h-16"];
+    const podiumColors = ["bg-gray-400", "bg-yellow-400", "bg-orange-400"];
+    const podiumBorders = ["border-gray-300", "border-yellow-300", "border-orange-300"];
+    const podiumRanks = [2, 1, 3];
+    const podiumMedals = ["🥈", "🥇", "🥉"];
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-900 via-orange-900 to-red-900 flex flex-col items-center p-6 gap-6" dir="rtl">
-        <div className="text-center">
-          <div className="text-6xl mb-2">🏆</div>
-          <h1 className="text-3xl font-black text-white">المراكز النهائية</h1>
+      <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black flex flex-col items-center p-4 gap-4 overflow-hidden" dir="rtl">
+        {/* عنوان */}
+        <div className="text-center mt-2">
+          <div className="text-4xl mb-1 animate-bounce">🏆</div>
+          <h1 className="text-3xl font-black text-yellow-400">المراكز النهائية</h1>
         </div>
 
-        {/* مركزك */}
-        <Card className="bg-white/20 border-yellow-400/50 w-full max-w-sm">
-          <CardContent className="p-4 text-center">
-            <p className="text-yellow-200 text-sm">مركزك</p>
-            <p className="text-white text-5xl font-black">#{myRank}</p>
-            <p className="text-yellow-300 text-xl font-bold">{myScore.toLocaleString()} نقطة</p>
-          </CardContent>
-        </Card>
-
-        <div className="w-full max-w-sm flex flex-col gap-2">
-          {sorted.slice(0, 10).map((p, i) => (
-            <div
-              key={i}
-              className={`flex items-center gap-3 rounded-xl p-3 ${p.name === studentName ? "bg-yellow-500/30 border border-yellow-400" : "bg-white/10"}`}
-            >
-              <span className="text-2xl w-8 text-center">{i < 3 ? medals[i] : `#${i + 1}`}</span>
-              <span className="text-white flex-1 font-bold">{p.name}</span>
-              <span className="text-yellow-300 font-bold">{p.score.toLocaleString()}</span>
-            </div>
-          ))}
+        {/* مركز الطالب */}
+        <div className={`px-6 py-3 rounded-2xl text-center border-2 ${
+          myRank === 1 ? "bg-yellow-500/30 border-yellow-400" :
+          myRank === 2 ? "bg-gray-500/30 border-gray-300" :
+          myRank === 3 ? "bg-orange-500/30 border-orange-400" :
+          "bg-white/10 border-white/20"
+        }`}>
+          <p className="text-white/70 text-xs">مركزك</p>
+          <p className="text-white text-4xl font-black">#{myRank}</p>
+          <p className="text-yellow-300 font-bold">{myScore.toLocaleString()} نقطة</p>
         </div>
+
+        {/* منصة التتويج */}
+        <div className="flex items-end justify-center gap-3 w-full max-w-sm">
+          {podiumOrder.map((player, idx) => {
+            const rank = podiumRanks[idx];
+            const isFirst = rank === 1;
+            const isMe = player.name === studentName;
+            return (
+              <div key={player.name} className="flex flex-col items-center gap-1 flex-1">
+                <div className={`text-3xl ${isFirst ? "animate-bounce" : ""}`}>{podiumMedals[idx]}</div>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-black shadow-lg border-4 ${podiumBorders[idx]} ${isMe ? "bg-yellow-400/40" : "bg-white/10"} text-white`}>
+                  {player.name.charAt(0).toUpperCase()}
+                </div>
+                <p className={`text-center font-bold text-xs max-w-[70px] truncate ${isFirst ? "text-yellow-300" : "text-white"} ${isMe ? "underline" : ""}`}>{player.name}</p>
+                <p className={`font-black text-sm ${isFirst ? "text-yellow-400" : "text-white/80"}`}>{player.score.toLocaleString()}</p>
+                <div className={`w-full ${podiumHeights[idx]} ${podiumColors[idx]} rounded-t-xl flex items-center justify-center shadow-xl`}>
+                  <span className="text-white font-black text-2xl">#{rank}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* بقية المراكز */}
+        {rest.length > 0 && (
+          <div className="w-full max-w-sm flex flex-col gap-1">
+            {rest.map((p, i) => (
+              <div key={i} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${p.name === studentName ? "bg-yellow-500/20 border border-yellow-400/50" : "bg-white/10"}`}>
+                <span className="text-white/60 font-bold w-6 text-sm">#{i + 4}</span>
+                <span className="text-white flex-1 font-medium text-sm">{p.name}</span>
+                <span className="text-yellow-300 font-bold text-sm">{p.score.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

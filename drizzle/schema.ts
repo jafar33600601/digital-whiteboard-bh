@@ -110,8 +110,8 @@ export type InsertQuizSubmission = typeof quizSubmissions.$inferInsert;
 export const liveQuizSessions = mysqlTable("live_quiz_sessions", {
   id: int("id").autoincrement().primaryKey(),
   quizId: int("quizId").notNull(),
-  // الحالة: waiting=انتظار الطلاب | question=يعرض سؤالاً | results=نتائج السؤال | leaderboard=المراكز | ended=انتهى
-  state: mysqlEnum("state", ["waiting", "question", "results", "leaderboard", "ended"]).default("waiting").notNull(),
+  // الحالة: waiting=انتظار الطلاب | countdown=عد تنازلي 5-1 | question=يعرض سؤالاً | results=نتائج السؤال | leaderboard=المراكز | ended=انتهى
+  state: mysqlEnum("state", ["waiting", "countdown", "question", "results", "leaderboard", "ended"]).default("waiting").notNull(),
   currentQuestionIndex: int("currentQuestionIndex").default(0).notNull(),
   questionStartedAt: timestamp("questionStartedAt"),
   // قائمة الطلاب المنضمين: JSON array of {name, score}

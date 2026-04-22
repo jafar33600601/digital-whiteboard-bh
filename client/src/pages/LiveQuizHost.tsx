@@ -17,7 +17,7 @@ interface LiveQuizHostProps {
 
 type LiveState = {
   id: number;
-  state: "waiting" | "question" | "results" | "leaderboard" | "ended";
+  state: "waiting" | "countdown" | "question" | "results" | "leaderboard" | "ended";
   currentQuestionIndex: number;
   questionStartedAt: Date | null;
   participants: { name: string; score: number }[];
@@ -27,6 +27,53 @@ type LiveState = {
 
 const COLORS = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"];
 const OPTION_LABELS = ["أ", "ب", "ج", "د", "هـ", "و"];
+
+// شاشة العد التنازلي 5-4-3-2-1
+function CountdownScreen() {
+  const [count, setCount] = useState(5);
+  useEffect(() => {
+    if (count <= 0) return;
+    const t = setTimeout(() => setCount(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [count]);
+
+  const colors = ["#e74c3c", "#e67e22", "#f1c40f", "#2ecc71", "#3498db"];
+  const bgColor = count > 0 ? colors[5 - count] : "#9b59b6";
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center gap-8 transition-colors duration-500"
+      style={{ background: `linear-gradient(135deg, ${bgColor}dd, ${bgColor}88)` }}
+      dir="rtl"
+    >
+      <p className="text-white/80 text-2xl font-bold tracking-widest uppercase">يبدأ الاختبار خلال...</p>
+      {count > 0 ? (
+        <div
+          key={count}
+          className="text-white font-black flex items-center justify-center rounded-full shadow-2xl"
+          style={{
+            fontSize: "14rem",
+            width: "22rem",
+            height: "22rem",
+            background: "rgba(0,0,0,0.25)",
+            animation: "countPop 0.9s ease-out",
+          }}
+        >
+          {count}
+        </div>
+      ) : (
+        <div className="text-white font-black text-8xl animate-bounce">🚀</div>
+      )}
+      <style>{`
+        @keyframes countPop {
+          0% { transform: scale(1.6); opacity: 0.5; }
+          60% { transform: scale(0.95); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
   const [, setLocation] = useLocation();
@@ -147,6 +194,11 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
   const currentOptions = currentQuestion ? JSON.parse((currentQuestion as { options: string }).options) as string[] : [];
   const answeredCount = liveState?.currentAnswers?.length ?? 0;
   const totalParticipants = liveState?.participants?.length ?? 0;
+
+  // شاشة العد التنازلي 5-4-3-2-1 (عند بدء المسابقة)
+  if (isStarted && liveState?.state === "countdown") {
+    return <CountdownScreen />;
+  }
 
   // جاري تشغيل الجلسة
   if (!isStarted || !liveState) {
@@ -426,39 +478,62 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
   // لوحة المراكز النهائية
   if (liveState.state === "leaderboard") {
     const sorted = [...liveState.participants].sort((a, b) => b.score - a.score);
-    const medals = ["🥇", "🥈", "🥉"];
+    const top3 = sorted.slice(0, 3);
+    const rest = sorted.slice(3);
+    // ترتيب منصة التتويج: الثاني يسار - الأول وسط (أعلى) - الثالث يمين
+    const podiumOrder = [top3[1], top3[0], top3[2]].filter(Boolean);
+    const podiumHeights = ["h-28", "h-40", "h-20"];
+    const podiumColors = ["bg-gray-400", "bg-yellow-400", "bg-orange-400"];
+    const podiumBorders = ["border-gray-300", "border-yellow-300", "border-orange-300"];
+    const podiumRanks = [2, 1, 3];
+    const podiumMedals = ["🥈", "🥇", "🥉"];
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-yellow-900 via-orange-900 to-red-900 flex flex-col items-center p-6 gap-6" dir="rtl">
-        <div className="text-center">
-          <div className="text-6xl mb-2">🏆</div>
-          <h1 className="text-4xl font-black text-white">المراكز النهائية</h1>
-          <p className="text-yellow-200">{quiz.title}</p>
+      <div className="min-h-screen bg-gradient-to-b from-indigo-950 via-purple-950 to-black flex flex-col items-center p-6 gap-6 overflow-hidden" dir="rtl">
+        {/* عنوان */}
+        <div className="text-center mt-4">
+          <div className="text-5xl mb-2 animate-bounce">🏆</div>
+          <h1 className="text-4xl font-black text-yellow-400 drop-shadow-lg">المراكز النهائية</h1>
+          <p className="text-purple-300 text-sm mt-1">{quiz.title}</p>
         </div>
 
-        <div className="w-full max-w-2xl flex flex-col gap-3">
-          {sorted.map((p, i) => (
-            <Card
-              key={i}
-              className={`border-2 ${i === 0 ? "border-yellow-400 bg-yellow-500/20" : i === 1 ? "border-gray-300 bg-gray-500/20" : i === 2 ? "border-orange-400 bg-orange-500/20" : "border-white/20 bg-white/10"}`}
-            >
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="text-4xl w-12 text-center">
-                  {i < 3 ? medals[i] : <span className="text-white font-bold text-xl">#{i + 1}</span>}
+        {/* منصة التتويج */}
+        <div className="flex items-end justify-center gap-4 w-full max-w-lg mt-4">
+          {podiumOrder.map((player, idx) => {
+            const rank = podiumRanks[idx];
+            const isFirst = rank === 1;
+            return (
+              <div key={player.name} className="flex flex-col items-center gap-2 flex-1">
+                {/* صورة اللاعب */}
+                <div className={`text-4xl ${isFirst ? "animate-bounce" : ""}`}>{podiumMedals[idx]}</div>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black shadow-lg border-4 ${podiumBorders[idx]} bg-white/10 text-white`}>
+                  {player.name.charAt(0).toUpperCase()}
                 </div>
-                <div className="flex-1">
-                  <p className="text-white font-bold text-xl">{p.name}</p>
+                <p className={`text-center font-bold text-sm max-w-[90px] truncate ${isFirst ? "text-yellow-300" : "text-white"}`}>{player.name}</p>
+                <p className={`font-black text-lg ${isFirst ? "text-yellow-400" : "text-white/80"}`}>{player.score.toLocaleString()}</p>
+                {/* المنصة */}
+                <div className={`w-full ${podiumHeights[idx]} ${podiumColors[idx]} rounded-t-xl flex items-center justify-center shadow-xl`}>
+                  <span className="text-white font-black text-3xl">#{rank}</span>
                 </div>
-                <div className="text-right">
-                  <p className="text-yellow-300 font-black text-2xl">{p.score.toLocaleString()}</p>
-                  <p className="text-white/60 text-xs">نقطة</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
-        <div className="flex gap-3">
+        {/* بقية المراكز */}
+        {rest.length > 0 && (
+          <div className="w-full max-w-lg flex flex-col gap-2 mt-2">
+            {rest.map((p, i) => (
+              <div key={i} className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2">
+                <span className="text-white/60 font-bold w-8">#{i + 4}</span>
+                <span className="text-white flex-1 font-medium">{p.name}</span>
+                <span className="text-yellow-300 font-bold">{p.score.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-2">
           <Button
             size="lg"
             className="bg-red-600 hover:bg-red-500 text-white"
