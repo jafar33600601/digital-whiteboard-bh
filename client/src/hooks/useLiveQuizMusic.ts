@@ -1,12 +1,25 @@
 import { useEffect, useRef, useCallback } from "react";
 
-// توليد موسيقى تحفيزية باستخدام Web Audio API
+// رابط الموسيقى الخلفية المُولَّدة بالذكاء الاصطناعي
+const BGM_URL = "/manus-storage/kahoot-bgm_b8bb2705.mp3";
+
 export function useLiveQuizMusic() {
+  const bgmRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const gainNodeRef = useRef<GainNode | null>(null);
   const oscillatorsRef = useRef<OscillatorNode[]>([]);
-  const isPlayingRef = useRef(false);
 
+  // تهيئة عنصر الصوت للموسيقى الخلفية
+  const getBgm = useCallback(() => {
+    if (!bgmRef.current) {
+      bgmRef.current = new Audio(BGM_URL);
+      bgmRef.current.loop = true;
+      bgmRef.current.volume = 0.35;
+    }
+    return bgmRef.current;
+  }, []);
+
+  // Web Audio API للأصوات القصيرة
   const getCtx = useCallback(() => {
     if (!audioCtxRef.current) {
       audioCtxRef.current = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -17,86 +30,44 @@ export function useLiveQuizMusic() {
     return audioCtxRef.current;
   }, []);
 
-  const stopAll = useCallback(() => {
+  const stopOscillators = useCallback(() => {
     oscillatorsRef.current.forEach(osc => { try { osc.stop(); } catch {} });
     oscillatorsRef.current = [];
-    isPlayingRef.current = false;
   }, []);
 
-  // موسيقى الانتظار - لحن هادئ
+  const stopAll = useCallback(() => {
+    stopOscillators();
+    if (bgmRef.current) {
+      bgmRef.current.pause();
+      bgmRef.current.currentTime = 0;
+    }
+  }, [stopOscillators]);
+
+  // موسيقى الانتظار - تشغيل الموسيقى الخلفية
   const playWaiting = useCallback(() => {
-    stopAll();
-    const ctx = getCtx();
-    if (ctx.state === "suspended") ctx.resume();
-    const notes = [261.63, 329.63, 392.00, 329.63, 261.63, 293.66, 349.23, 293.66];
-    let time = ctx.currentTime;
-    const playLoop = () => {
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(gainNodeRef.current!);
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0, time + i * 0.4);
-        gain.gain.linearRampToValueAtTime(0.3, time + i * 0.4 + 0.05);
-        gain.gain.linearRampToValueAtTime(0, time + i * 0.4 + 0.35);
-        osc.start(time + i * 0.4);
-        osc.stop(time + i * 0.4 + 0.4);
-        oscillatorsRef.current.push(osc);
-      });
-      time += notes.length * 0.4;
-    };
-    playLoop();
-    const interval = setInterval(() => {
-      if (!isPlayingRef.current) { clearInterval(interval); return; }
-      playLoop();
-    }, notes.length * 400);
-    isPlayingRef.current = true;
-    return () => clearInterval(interval);
-  }, [getCtx, stopAll]);
+    stopOscillators();
+    const bgm = getBgm();
+    bgm.volume = 0.3;
+    bgm.currentTime = 0;
+    bgm.play().catch(() => {});
+  }, [getBgm, stopOscillators]);
 
-  // موسيقى السؤال - إيقاع سريع ومثير
+  // موسيقى السؤال - نفس الموسيقى بصوت أعلى قليلاً
   const playQuestion = useCallback(() => {
-    stopAll();
-    const ctx = getCtx();
-    if (ctx.state === "suspended") ctx.resume();
-    isPlayingRef.current = true;
+    stopOscillators();
+    const bgm = getBgm();
+    bgm.volume = 0.4;
+    if (bgm.paused) {
+      bgm.currentTime = 0;
+      bgm.play().catch(() => {});
+    }
+  }, [getBgm, stopOscillators]);
 
-    // لحن رئيسي
-    const melody = [523.25, 659.25, 783.99, 659.25, 523.25, 587.33, 698.46, 587.33];
-    let time = ctx.currentTime;
-    const playMelody = () => {
-      melody.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(gainNodeRef.current!);
-        osc.type = "square";
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0, time + i * 0.25);
-        gain.gain.linearRampToValueAtTime(0.15, time + i * 0.25 + 0.02);
-        gain.gain.linearRampToValueAtTime(0, time + i * 0.25 + 0.22);
-        osc.start(time + i * 0.25);
-        osc.stop(time + i * 0.25 + 0.25);
-        oscillatorsRef.current.push(osc);
-      });
-      time += melody.length * 0.25;
-    };
-    playMelody();
-    const interval = setInterval(() => {
-      if (!isPlayingRef.current) { clearInterval(interval); return; }
-      playMelody();
-    }, melody.length * 250);
-    return () => clearInterval(interval);
-  }, [getCtx, stopAll]);
-
-  // موسيقى العد التنازلي الأخير (5 ثوانٍ)
+  // موسيقى العد التنازلي الأخير (5 ثوانٍ) - نغمات تيك تاك
   const playUrgent = useCallback(() => {
-    stopAll();
+    stopOscillators();
     const ctx = getCtx();
     if (ctx.state === "suspended") ctx.resume();
-    isPlayingRef.current = true;
     const beats = [880, 880, 880, 880, 1046.5];
     beats.forEach((freq, i) => {
       const osc = ctx.createOscillator();
@@ -113,11 +84,11 @@ export function useLiveQuizMusic() {
       osc.stop(t + 0.5);
       oscillatorsRef.current.push(osc);
     });
-  }, [getCtx, stopAll]);
+  }, [getCtx, stopOscillators]);
 
   // صوت الإجابة الصحيحة
   const playCorrect = useCallback(() => {
-    stopAll();
+    stopOscillators();
     const ctx = getCtx();
     if (ctx.state === "suspended") ctx.resume();
     const notes = [523.25, 659.25, 783.99, 1046.5];
@@ -135,11 +106,11 @@ export function useLiveQuizMusic() {
       osc.stop(t + 0.15);
       oscillatorsRef.current.push(osc);
     });
-  }, [getCtx, stopAll]);
+  }, [getCtx, stopOscillators]);
 
   // صوت الإجابة الخاطئة
   const playWrong = useCallback(() => {
-    stopAll();
+    stopOscillators();
     const ctx = getCtx();
     if (ctx.state === "suspended") ctx.resume();
     const notes = [220, 196, 174.61];
@@ -157,14 +128,13 @@ export function useLiveQuizMusic() {
       osc.stop(t + 0.15);
       oscillatorsRef.current.push(osc);
     });
-  }, [getCtx, stopAll]);
+  }, [getCtx, stopOscillators]);
 
-  // موسيقى لوحة المراكز
+  // موسيقى لوحة المراكز - فانفار احتفالية
   const playLeaderboard = useCallback(() => {
     stopAll();
     const ctx = getCtx();
     if (ctx.state === "suspended") ctx.resume();
-    isPlayingRef.current = true;
     const fanfare = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5, 1318.5];
     fanfare.forEach((freq, i) => {
       const osc = ctx.createOscillator();

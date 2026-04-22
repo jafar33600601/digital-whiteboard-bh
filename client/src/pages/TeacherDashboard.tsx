@@ -43,6 +43,7 @@ const statusConfig: Record<SubmissionStatus, { label: string; color: string; bg:
 // ── أداة النجوم التحفيزية ────────────────────────────────────────────────────
 // أدوات التحفيز الجاهزة
 const MOTIVATIONAL_STAMPS = [
+  // عربي
   { label: "⭐ نجمة",           text: "⭐",              color: "#f59e0b", fontSize: 56 },
   { label: "10 من 10",          text: "10 من 10 🌟",    color: "#16a34a", fontSize: 32 },
   { label: "متميز 🏆",           text: "متميز 🏆",         color: "#7c3aed", fontSize: 32 },
@@ -53,6 +54,12 @@ const MOTIVATIONAL_STAMPS = [
   { label: "استمر 💪",            text: "استمر 💪",           color: "#0284c7", fontSize: 30 },
   { label: "أحسنت 👏",            text: "أحسنت 👏",           color: "#9333ea", fontSize: 30 },
   { label: "ممتاز 100 💯",         text: "ممتاز 100 💯",       color: "#be185d", fontSize: 28 },
+  // إنجليزي
+  { label: "Marvelous 🌟",      text: "Marvelous! 🌟",    color: "#7c3aed", fontSize: 28 },
+  { label: "Amazing 🤩",         text: "Amazing! 🤩",      color: "#0891b2", fontSize: 28 },
+  { label: "Outstanding 🏆",    text: "Outstanding! 🏆", color: "#16a34a", fontSize: 26 },
+  { label: "Great 👏",           text: "Great! 👏",        color: "#d97706", fontSize: 30 },
+  { label: "Wow 🚀",             text: "Wow! 🚀",          color: "#be185d", fontSize: 32 },
 ];
 
 export default function TeacherDashboard() {
@@ -502,7 +509,7 @@ export default function TeacherDashboard() {
                     </button>
 
                     {showStarPanel && (
-                      <div className="absolute top-full mt-2 left-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 w-72" style={{ direction: "rtl" }}>
+                      <div className="absolute top-full mt-2 left-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-4 z-50 w-96" style={{ direction: "rtl" }}>
                         <div className="flex items-center justify-between mb-3">
                           <p className="text-sm font-bold text-slate-700">أدوات التحفيز</p>
                           <button
@@ -510,7 +517,7 @@ export default function TeacherDashboard() {
                             className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full text-xs"
                           >×</button>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           {MOTIVATIONAL_STAMPS.map(stamp => (
                             <button
                               key={stamp.label}
