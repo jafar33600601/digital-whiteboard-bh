@@ -321,6 +321,7 @@ export async function createLiveSession(quizId: number): Promise<typeof liveQuiz
     currentQuestionIndex: 0,
     participants: "[]",
     currentAnswers: "[]",
+    kickedParticipants: "[]",
   });
   const result = await db.select().from(liveQuizSessions)
     .where(eq(liveQuizSessions.quizId, quizId))
