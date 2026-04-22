@@ -296,6 +296,22 @@ const quizRouter = router({
       return { success: true };
     }),
 
+  // تحديث المدة الزمنية لكل سؤال
+  updateTimeLimit: protectedProcedure
+    .input(z.object({ quizId: z.number(), timeLimitSeconds: z.number().min(0).max(300) }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const db = (await import("./db")).getDb;
+      const drizzleDb = await db();
+      if (!drizzleDb) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { quizzes } = await import("../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      await drizzleDb.update(quizzes).set({ timeLimitSeconds: input.timeLimitSeconds }).where(eq(quizzes.id, input.quizId));
+      return { success: true };
+    }),
+
   // ===== Live Quiz (Kahoot-style) =====
 
   // بدء جلسة مباشرة (المعلم)
@@ -317,6 +333,17 @@ const quizRouter = router({
     .query(async ({ input }) => {
       const session = await getLiveSessionByQuiz(input.quizId);
       if (!session) return null;
+      // جلب المدة الزمنية من جدول الاختبارات
+      const db = (await import("./db")).getDb;
+      const drizzleDb = await db();
+      let timeLimitSeconds = 30;
+      if (drizzleDb) {
+        const { quizzes } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const [quizRow] = await drizzleDb.select({ timeLimitSeconds: quizzes.timeLimitSeconds })
+          .from(quizzes).where(eq(quizzes.id, session.quizId)).limit(1);
+        if (quizRow) timeLimitSeconds = quizRow.timeLimitSeconds;
+      }
       return {
         id: session.id,
         state: session.state,
@@ -324,6 +351,7 @@ const quizRouter = router({
         questionStartedAt: session.questionStartedAt,
         participants: JSON.parse(session.participants || "[]") as { name: string; score: number }[],
         currentAnswers: JSON.parse(session.currentAnswers || "[]") as { studentName: string; answerIndex: number; timeMs: number }[],
+        timeLimitSeconds,
       };
     }),
 

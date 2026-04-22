@@ -22,6 +22,7 @@ type LiveState = {
   questionStartedAt: Date | null;
   participants: { name: string; score: number }[];
   currentAnswers: { studentName: string; answerIndex: number; timeMs: number }[];
+  timeLimitSeconds: number; // 0 = بلا حد زمني
 };
 
 const COLORS = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"];
@@ -106,15 +107,20 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
   }, [quizId, showResults]);
 
   useEffect(() => {
-    if (liveState?.state === "question" && quiz?.questions) {
-      const currentQ = quiz.questions[liveState.currentQuestionIndex];
-      if (currentQ) {
-        const timeLimit = (currentQ as { timeLimit?: number }).timeLimit ?? 30;
-        // احسب الوقت المتبقي بناءً على وقت البداية
-        if (liveState.questionStartedAt) {
-          const elapsed = Math.floor((Date.now() - new Date(liveState.questionStartedAt).getTime()) / 1000);
-          const remaining = Math.max(0, timeLimit - elapsed);
-          if (remaining > 0) startCountdown(remaining);
+    if (liveState?.state === "question" && liveState.questionStartedAt) {
+      const timeLimit = liveState.timeLimitSeconds ?? 30;
+      if (timeLimit === 0) {
+        // بلا حد زمني - لا نشغل العداد
+        if (timerRef.current) clearInterval(timerRef.current);
+        setTimeLeft(0);
+      } else {
+        const elapsed = Math.floor((Date.now() - new Date(liveState.questionStartedAt).getTime()) / 1000);
+        const remaining = Math.max(0, timeLimit - elapsed);
+        if (remaining > 0) startCountdown(remaining);
+        else {
+          // الوقت انتهى بالفعل - عرض النتائج
+          setTimeLeft(0);
+          if (timerRef.current) clearInterval(timerRef.current);
         }
       }
     }
@@ -216,9 +222,9 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
 
   // حالة السؤال
   if (liveState.state === "question" && currentQuestion) {
-    const timeLimit = (currentQuestion as { timeLimit?: number }).timeLimit ?? 30;
-    const progressPct = (timeLeft / timeLimit) * 100;
-    const isUrgent = timeLeft <= 5;
+    const timeLimit = liveState.timeLimitSeconds ?? 30;
+    const progressPct = timeLimit > 0 ? (timeLeft / timeLimit) * 100 : 100;
+    const isUrgent = timeLimit > 0 && timeLeft <= 5 && timeLeft > 0;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex flex-col p-4 gap-4" dir="rtl">
@@ -246,15 +252,24 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
 
         {/* العداد التنازلي */}
         <div className="flex flex-col items-center gap-2">
-          <div className={`text-7xl font-black ${isUrgent ? "text-red-400 animate-bounce" : "text-white"}`}>
-            {timeLeft}
-          </div>
-          <div className="w-full max-w-md h-3 bg-white/20 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-1000 ${isUrgent ? "bg-red-500" : "bg-green-400"}`}
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
+          {timeLimit > 0 ? (
+            <>
+              <div className={`text-7xl font-black ${isUrgent ? "text-red-400 animate-bounce" : "text-white"}`}>
+                {timeLeft}
+              </div>
+              <div className="w-full max-w-md h-3 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ${isUrgent ? "bg-red-500" : "bg-green-400"}`}
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 text-white/60 text-lg">
+              <Clock className="w-6 h-6" />
+              <span>بلا حد زمني</span>
+            </div>
+          )}
         </div>
 
         {/* السؤال */}

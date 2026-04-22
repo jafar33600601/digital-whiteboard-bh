@@ -20,6 +20,7 @@ type LiveState = {
   questionStartedAt: Date | null;
   participants: { name: string; score: number }[];
   currentAnswers: { studentName: string; answerIndex: number; timeMs: number }[];
+  timeLimitSeconds: number; // 0 = بلا حد زمني
 };
 
 const COLORS = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"];
@@ -102,24 +103,26 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
     else if (liveState.state === "leaderboard") music.playLeaderboard();
   }, [liveState?.state]);
 
-  // عداد تنازلي للطالب
+  // عداد تنازلي للطالب - يستخدم timeLimitSeconds من الجلسة
   useEffect(() => {
-    if (liveState?.state === "question" && quiz?.questions) {
-      const currentQ = quiz.questions[liveState.currentQuestionIndex];
-      if (currentQ && liveState.questionStartedAt) {
-        const timeLimit = (currentQ as { timeLimit?: number }).timeLimit ?? 30;
-        if (timerRef.current) clearInterval(timerRef.current);
-        const calcRemaining = () => {
-          const elapsed = Math.floor((Date.now() - new Date(liveState.questionStartedAt!).getTime()) / 1000);
-          return Math.max(0, timeLimit - elapsed);
-        };
-        setTimeLeft(calcRemaining());
-        timerRef.current = setInterval(() => {
-          const r = calcRemaining();
-          setTimeLeft(r);
-          if (r <= 0) clearInterval(timerRef.current!);
-        }, 500);
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (liveState?.state === "question" && liveState.questionStartedAt) {
+      const timeLimit = liveState.timeLimitSeconds ?? 30;
+      if (timeLimit === 0) {
+        // بلا حد زمني - لا نشغل العداد
+        setTimeLeft(0);
+        return;
       }
+      const calcRemaining = () => {
+        const elapsed = Math.floor((Date.now() - new Date(liveState.questionStartedAt!).getTime()) / 1000);
+        return Math.max(0, timeLimit - elapsed);
+      };
+      setTimeLeft(calcRemaining());
+      timerRef.current = setInterval(() => {
+        const r = calcRemaining();
+        setTimeLeft(r);
+        if (r <= 0) clearInterval(timerRef.current!);
+      }, 500);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [liveState?.state, liveState?.currentQuestionIndex, liveState?.questionStartedAt]);
@@ -249,9 +252,9 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
     if (!currentQ) return null;
     const rawOpts = (currentQ as unknown as { options: string | string[] }).options;
     const options: string[] = Array.isArray(rawOpts) ? rawOpts : JSON.parse(rawOpts as string) as string[];
-    const timeLimit = (currentQ as { timeLimit?: number }).timeLimit ?? 30;
-    const progressPct = (timeLeft / timeLimit) * 100;
-    const isUrgent = timeLeft <= 5;
+    const timeLimit = liveState.timeLimitSeconds ?? 30;
+    const progressPct = timeLimit > 0 ? (timeLeft / timeLimit) * 100 : 100;
+    const isUrgent = timeLimit > 0 && timeLeft <= 5 && timeLeft > 0;
     const hasAnswered = selectedAnswer !== null;
 
     return (
@@ -261,10 +264,17 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
           <Badge className="bg-white/20 text-white border-white/30">
             سؤال {liveState.currentQuestionIndex + 1} / {quiz.questions.length}
           </Badge>
-          <div className={`flex items-center gap-2 text-xl font-black ${isUrgent ? "text-red-400 animate-bounce" : "text-white"}`}>
-            <Clock className="w-5 h-5" />
-            {timeLeft}
-          </div>
+          {timeLimit > 0 ? (
+            <div className={`flex items-center gap-2 text-xl font-black ${isUrgent ? "text-red-400 animate-bounce" : "text-white"}`}>
+              <Clock className="w-5 h-5" />
+              {timeLeft}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-white/60">
+              <Clock className="w-4 h-4" />
+              بلا حد
+            </div>
+          )}
         </div>
 
         {/* شريط التقدم */}

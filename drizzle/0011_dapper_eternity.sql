@@ -1,0 +1,1 @@
+ALTER TABLE `quizzes` ADD `timeLimitSeconds` int DEFAULT 30 NOT NULL;

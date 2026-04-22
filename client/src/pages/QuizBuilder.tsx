@@ -61,6 +61,10 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
     onSuccess: () => { refetch(); toast.success("تم تحديث نوع الاختبار"); }
   });
 
+  const updateTimeLimitMut = trpc.quiz.updateTimeLimit.useMutation({
+    onSuccess: () => { refetch(); toast.success("تم تحديث المدة الزمنية"); }
+  });
+
   const publishMut = trpc.quiz.publish.useMutation({
     onSuccess: () => { refetch(); toast.success(quiz?.isPublished ? "تم إيقاف مشاركة الاختبار" : "تم نشر الاختبار!"); }
   });
@@ -234,6 +238,43 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                 </button>
               </div>
             </div>
+
+            {/* سلايدر المدة الزمنية - يظهر فقط في وضع الكاهوت */}
+            {quizMode === "live" && (
+              <div className="max-w-4xl mx-auto bg-purple-50 border border-purple-200 rounded-xl p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-purple-700">⏱ مدة كل سؤال:</p>
+                  <span className="text-sm font-bold text-purple-800">
+                    {(() => {
+                      const t = (quiz as unknown as { timeLimitSeconds?: number }).timeLimitSeconds ?? 30;
+                      return t === 0 ? "بلا حد زمني" : `${t} ثانية`;
+                    })()}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={120}
+                  step={5}
+                  defaultValue={(quiz as unknown as { timeLimitSeconds?: number }).timeLimitSeconds ?? 30}
+                  className="w-full accent-purple-600"
+                  onMouseUp={(e) => updateTimeLimitMut.mutate({ quizId: quizId!, timeLimitSeconds: Number((e.target as HTMLInputElement).value) })}
+                  onTouchEnd={(e) => updateTimeLimitMut.mutate({ quizId: quizId!, timeLimitSeconds: Number((e.target as HTMLInputElement).value) })}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    const label = e.target.closest(".bg-purple-50")?.querySelector("span");
+                    if (label) label.textContent = val === 0 ? "بلا حد زمني" : `${val} ثانية`;
+                  }}
+                />
+                <div className="flex justify-between text-xs text-purple-500 mt-1">
+                  <span>بلا حد</span>
+                  <span>30ث</span>
+                  <span>60ث</span>
+                  <span>90ث</span>
+                  <span>120ث</span>
+                </div>
+              </div>
+            )}
             <div className="max-w-4xl mx-auto flex items-center gap-3">
               <div className={`text-xs px-2 py-1 rounded-full font-medium ${quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
                 {quiz.isPublished ? "✓ منشور" : "⚠ غير منشور"}

@@ -60,6 +60,8 @@ export const quizzes = mysqlTable("quizzes", {
   teacherId: int("teacherId").notNull(),
   title: varchar("title", { length: 255 }).notNull().default("اختبار جديد"),
   isPublished: int("isPublished").default(0).notNull(), // 0=draft, 1=published
+  // مدة كل سؤال بالثواني في وضع الكاهوت (0 = بلا حد زمني)
+  timeLimitSeconds: int("timeLimitSeconds").default(30).notNull(),
   // quizMode: normal = الطالب يجيب بوقته | live = كاهوت-style
   quizMode: mysqlEnum("quizMode", ["normal", "live"]).default("normal").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
