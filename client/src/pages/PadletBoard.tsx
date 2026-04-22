@@ -23,6 +23,7 @@ type Card = {
   likes: number;
   isPinned: number;
   teacherComment: string | null;
+  starRating: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -430,6 +431,8 @@ function CardItem({
 }) {
   const [editingComment, setEditingComment] = useState(false);
   const [commentText, setCommentText] = useState(card.teacherComment ?? "");
+  const [selectedStars, setSelectedStars] = useState(card.starRating ?? 0);
+  const [hoverStar, setHoverStar] = useState(0);
 
   const addCommentMut = trpc.padlet.addTeacherComment.useMutation({
     onSuccess: () => {
@@ -463,15 +466,19 @@ function CardItem({
               </button>
             )}
             {isTeacherView && (
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {/* زر التقييم - يظهر فقط لبطاقات الطلاب */}
+              <div className="flex gap-1">
+                {/* زر التقييم - يظهر دائماً لبطاقات الطلاب */}
                 {card.isTeacher === 0 && boardId && (
                   <button
-                    onClick={() => { setCommentText(card.teacherComment ?? ""); setEditingComment(true); }}
-                    className="text-xs px-1.5 py-1 rounded-lg transition-colors text-amber-500 hover:text-amber-700 hover:bg-amber-50"
+                    onClick={() => { setCommentText(card.teacherComment ?? ""); setSelectedStars(card.starRating ?? 0); setEditingComment(true); }}
+                    className={`text-xs px-1.5 py-1 rounded-lg transition-colors ${
+                      card.teacherComment || card.starRating > 0
+                        ? "text-amber-600 bg-amber-50"
+                        : "text-amber-400 hover:text-amber-600 hover:bg-amber-50"
+                    }`}
                     title="إضافة تقييم"
                   >
-                    ✏️
+                    {card.teacherComment || card.starRating > 0 ? "✏️✓" : "✏️"}
                   </button>
                 )}
                 {onTogglePin && (
@@ -493,39 +500,64 @@ function CardItem({
         </div>
 
         {/* تقييم المعلم - يظهر للجميع بلون مميز */}
-        {card.teacherComment && !editingComment && (
+        {(card.teacherComment || card.starRating > 0) && !editingComment && (
           <div className="mt-3 rounded-xl px-3 py-2 bg-amber-50 border border-amber-200">
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-bold text-amber-700">👨‍🏫 تقييم المعلم</span>
+              {card.starRating > 0 && (
+                <div className="flex gap-0.5">
+                  {[1,2,3,4,5].map(s => (
+                    <span key={s} className={`text-sm ${s <= card.starRating ? "text-amber-400" : "text-slate-200"}`}>★</span>
+                  ))}
+                </div>
+              )}
             </div>
-            <p className="text-sm text-amber-800 leading-relaxed whitespace-pre-wrap">{card.teacherComment}</p>
+            {card.teacherComment && <p className="text-sm text-amber-800 leading-relaxed whitespace-pre-wrap">{card.teacherComment}</p>}
           </div>
         )}
 
         {/* نموذج التقييم - للمعلم فقط */}
         {editingComment && isTeacherView && boardId && (
           <div className="mt-3 rounded-xl px-3 py-2 bg-amber-50 border border-amber-200">
-            <p className="text-xs font-bold text-amber-700 mb-2">👨‍🏫 كتابة التقييم</p>
+            <p className="text-xs font-bold text-amber-700 mb-2">👨‍🏫 تقييم المعلم</p>
+            {/* تقييم النجوم */}
+            <div className="flex items-center gap-1 mb-2">
+              <span className="text-xs text-amber-600 ml-1">التقييم:</span>
+              {[1,2,3,4,5].map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSelectedStars(s === selectedStars ? 0 : s)}
+                  onMouseEnter={() => setHoverStar(s)}
+                  onMouseLeave={() => setHoverStar(0)}
+                  className="text-xl transition-transform hover:scale-110 focus:outline-none"
+                >
+                  <span className={(hoverStar || selectedStars) >= s ? "text-amber-400" : "text-slate-200"}>★</span>
+                </button>
+              ))}
+              {selectedStars > 0 && (
+                <span className="text-xs text-amber-600 mr-1">({selectedStars}/5)</span>
+              )}
+            </div>
             <textarea
               className="w-full text-sm border border-amber-300 rounded-lg p-2 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
               rows={2}
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
-              placeholder="اكتب تقييمك هنا..."
+              placeholder="اكتب تعليقك هنا... (اختياري)"
               dir="rtl"
-              autoFocus
             />
             <div className="flex gap-2 mt-2">
               <button
-                onClick={() => addCommentMut.mutate({ cardId: card.id, boardId, comment: commentText })}
+                onClick={() => addCommentMut.mutate({ cardId: card.id, boardId, comment: commentText, starRating: selectedStars })}
                 disabled={addCommentMut.isPending}
                 className="text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
               >
                 {addCommentMut.isPending ? "جاري..." : "حفظ التقييم"}
               </button>
-              {card.teacherComment && (
+              {(card.teacherComment || card.starRating > 0) && (
                 <button
-                  onClick={() => addCommentMut.mutate({ cardId: card.id, boardId, comment: "" })}
+                  onClick={() => addCommentMut.mutate({ cardId: card.id, boardId, comment: "", starRating: 0 })}
                   className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg transition-colors"
                 >
                   حذف التقييم

@@ -578,11 +578,11 @@ const padletRouter = router({
 
   // تقييم المعلم على بطاقة طالب
   addTeacherComment: protectedProcedure
-    .input(z.object({ cardId: z.number(), boardId: z.number(), comment: z.string() }))
+    .input(z.object({ cardId: z.number(), boardId: z.number(), comment: z.string(), starRating: z.number().min(0).max(5).default(0) }))
     .mutation(async ({ ctx, input }) => {
       const board = await getPadletBoardById(input.boardId);
       if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      await updatePadletCard(input.cardId, { teacherComment: input.comment || null });
+      await updatePadletCard(input.cardId, { teacherComment: input.comment || null, starRating: input.starRating });
       return { success: true };
     }),
 

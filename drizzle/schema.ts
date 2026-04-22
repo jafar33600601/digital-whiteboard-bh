@@ -164,6 +164,8 @@ export const padletCards = mysqlTable("padlet_cards", {
   isPinned: int("isPinned").default(0).notNull(),
   // تقييم المعلم على البطاقة
   teacherComment: text("teacherComment"),
+  // تقييم النجوم (0 = لا يوجد، 1-5 = عدد النجوم)
+  starRating: int("starRating").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

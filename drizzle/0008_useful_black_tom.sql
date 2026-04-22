@@ -1,0 +1,1 @@
+ALTER TABLE `padlet_cards` ADD `starRating` int DEFAULT 0 NOT NULL;

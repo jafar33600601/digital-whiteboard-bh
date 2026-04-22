@@ -20,6 +20,7 @@ type Card = {
   likes: number;
   isPinned: number;
   teacherComment: string | null;
+  starRating: number;
   createdAt: Date;
   updatedAt: Date;
 };
