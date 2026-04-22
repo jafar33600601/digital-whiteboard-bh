@@ -22,6 +22,7 @@ type Card = {
   imageKey: string | null;
   likes: number;
   isPinned: number;
+  teacherComment: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -411,16 +412,31 @@ export default function PadletBoard() {
 function CardItem({
   card,
   isTeacherView,
+  boardId,
   onDelete,
   onTogglePin,
   onLike,
+  onCommentSaved,
 }: {
   card: Card;
   isTeacherView: boolean;
+  boardId?: number;
   onDelete?: () => void;
   onTogglePin?: () => void;
   onLike?: () => void;
+  onCommentSaved?: () => void;
 }) {
+  const [editingComment, setEditingComment] = useState(false);
+  const [commentText, setCommentText] = useState(card.teacherComment ?? "");
+
+  const addCommentMut = trpc.padlet.addTeacherComment.useMutation({
+    onSuccess: () => {
+      setEditingComment(false);
+      onCommentSaved?.();
+    },
+    onError: (e) => { import("sonner").then(({ toast }) => toast.error(e.message)); },
+  });
+
   return (
     <div className={`bg-white rounded-2xl shadow-sm border transition-all hover:shadow-md relative group ${card.isPinned ? "ring-2 ring-violet-400" : ""}`}>
       {card.isPinned === 1 && (
@@ -446,6 +462,16 @@ function CardItem({
             )}
             {isTeacherView && (
               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* زر التقييم - يظهر فقط لبطاقات الطلاب */}
+                {card.isTeacher === 0 && boardId && (
+                  <button
+                    onClick={() => { setCommentText(card.teacherComment ?? ""); setEditingComment(true); }}
+                    className="text-xs px-1.5 py-1 rounded-lg transition-colors text-amber-500 hover:text-amber-700 hover:bg-amber-50"
+                    title="إضافة تقييم"
+                  >
+                    ✏️
+                  </button>
+                )}
                 {onTogglePin && (
                   <button onClick={onTogglePin} className={`text-xs px-1.5 py-1 rounded-lg transition-colors ${card.isPinned ? "text-violet-600 bg-violet-50" : "text-slate-400 hover:text-violet-600 hover:bg-violet-50"}`}>
                     📌
@@ -463,6 +489,52 @@ function CardItem({
             )}
           </div>
         </div>
+
+        {/* تقييم المعلم - يظهر للجميع بلون مميز */}
+        {card.teacherComment && !editingComment && (
+          <div className="mt-3 rounded-xl px-3 py-2 bg-amber-50 border border-amber-200">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-xs font-bold text-amber-700">👨‍🏫 تقييم المعلم</span>
+            </div>
+            <p className="text-sm text-amber-800 leading-relaxed whitespace-pre-wrap">{card.teacherComment}</p>
+          </div>
+        )}
+
+        {/* نموذج التقييم - للمعلم فقط */}
+        {editingComment && isTeacherView && boardId && (
+          <div className="mt-3 rounded-xl px-3 py-2 bg-amber-50 border border-amber-200">
+            <p className="text-xs font-bold text-amber-700 mb-2">👨‍🏫 كتابة التقييم</p>
+            <textarea
+              className="w-full text-sm border border-amber-300 rounded-lg p-2 bg-white resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+              rows={2}
+              value={commentText}
+              onChange={e => setCommentText(e.target.value)}
+              placeholder="اكتب تقييمك هنا..."
+              dir="rtl"
+              autoFocus
+            />
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => addCommentMut.mutate({ cardId: card.id, boardId, comment: commentText })}
+                disabled={addCommentMut.isPending}
+                className="text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {addCommentMut.isPending ? "جاري..." : "حفظ التقييم"}
+              </button>
+              {card.teacherComment && (
+                <button
+                  onClick={() => addCommentMut.mutate({ cardId: card.id, boardId, comment: "" })}
+                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-lg transition-colors"
+                >
+                  حذف التقييم
+                </button>
+              )}
+              <button onClick={() => setEditingComment(false)} className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg">
+                إلغاء
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

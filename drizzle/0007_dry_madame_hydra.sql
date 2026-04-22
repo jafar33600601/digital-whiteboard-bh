@@ -1,0 +1,1 @@
+ALTER TABLE `padlet_cards` ADD `teacherComment` text;

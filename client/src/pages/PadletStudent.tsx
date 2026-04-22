@@ -19,6 +19,7 @@ type Card = {
   imageKey: string | null;
   likes: number;
   isPinned: number;
+  teacherComment: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

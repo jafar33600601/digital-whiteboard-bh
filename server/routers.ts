@@ -576,6 +576,16 @@ const padletRouter = router({
       return { success: true };
     }),
 
+  // تقييم المعلم على بطاقة طالب
+  addTeacherComment: protectedProcedure
+    .input(z.object({ cardId: z.number(), boardId: z.number(), comment: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      await updatePadletCard(input.cardId, { teacherComment: input.comment || null });
+      return { success: true };
+    }),
+
   // رفع صورة بطاقة
   uploadCardImage: protectedProcedure
     .input(z.object({

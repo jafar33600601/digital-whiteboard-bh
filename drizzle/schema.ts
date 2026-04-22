@@ -162,6 +162,8 @@ export const padletCards = mysqlTable("padlet_cards", {
   likes: int("likes").default(0).notNull(),
   // مثبتة (من المعلم)
   isPinned: int("isPinned").default(0).notNull(),
+  // تقييم المعلم على البطاقة
+  teacherComment: text("teacherComment"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
