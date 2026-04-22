@@ -452,7 +452,7 @@ function CardItem({
       )}
       <div className="p-4">
         {card.title && <h3 className="font-bold text-slate-800 text-sm mb-1">{card.title}</h3>}
-        {card.content && <p className="text-slate-600 text-sm leading-relaxed">{card.content}</p>}
+        {card.content && <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">{card.content}</p>}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
           <div className="flex items-center gap-1.5">
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${card.isTeacher === 1 ? "bg-violet-100 text-violet-700" : "bg-slate-100 text-slate-600"}`}>
