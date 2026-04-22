@@ -96,6 +96,7 @@ export default function PadletBoard() {
   const [settingsBg, setSettingsBg] = useState("#f8fafc");
   const [settingsLayout, setSettingsLayout] = useState<"grid" | "stream" | "freeform">("grid");
   const [settingsAllow, setSettingsAllow] = useState(true);
+  const [settingsRequireApproval, setSettingsRequireApproval] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: board, isLoading: loadingBoard, refetch: refetchBoard } = trpc.padlet.getBoardById.useQuery(
@@ -103,7 +104,8 @@ export default function PadletBoard() {
     { enabled: !!boardId }
   );
 
-  const { data: cards, isLoading: loadingCards, refetch: refetchCards } = trpc.padlet.getCards.useQuery(
+  // المعلم يرى جميع البطاقات (بما فيها غير المنشورة)
+  const { data: cards, isLoading: loadingCards, refetch: refetchCards } = trpc.padlet.getAllCardsTeacher.useQuery(
     { boardId },
     { enabled: !!boardId, refetchInterval: 5000 }
   );
@@ -162,6 +164,7 @@ export default function PadletBoard() {
     setSettingsBg(board.bgColor);
     setSettingsLayout(board.layout as "grid" | "stream" | "freeform");
     setSettingsAllow(board.allowStudentCards === 1);
+    setSettingsRequireApproval(board.requireApproval === 1);
     setShowSettings(true);
   };
 
@@ -173,10 +176,25 @@ export default function PadletBoard() {
       bgColor: settingsBg,
       layout: settingsLayout,
       allowStudentCards: settingsAllow,
+      requireApproval: settingsRequireApproval,
     });
   };
 
-  const sortedCards = cards ? [...cards].sort((a, b) => {
+  const publishCardMut = trpc.padlet.publishCard.useMutation({
+    onSuccess: () => { toast.success("تم نشر البطاقة ✅"); refetchCards(); },
+    onError: () => toast.error("حدث خطأ"),
+  });
+
+  const publishAllMut = trpc.padlet.publishAllCards.useMutation({
+    onSuccess: (data) => { toast.success(`تم نشر ${data.count} بطاقة ✅`); refetchCards(); },
+    onError: () => toast.error("حدث خطأ"),
+  });
+
+  const pendingCards = cards ? cards.filter(c => c.isTeacher === 0 && (c as Card & { isPublished: number }).isPublished === 0) : [];
+
+  const sortedCards = cards ? [...(cards as Array<Card & { isPublished: number }>)].sort((a, b) => {
+    // المنشورة أولاً، ثم المثبتة، ثم الأحدث
+    if (a.isPublished !== b.isPublished) return b.isPublished - a.isPublished;
     if (a.isPinned !== b.isPinned) return b.isPinned - a.isPinned;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   }) : [];
@@ -224,6 +242,22 @@ export default function PadletBoard() {
             <Badge variant={board.allowStudentCards ? "default" : "secondary"} className="text-xs">
               {board.allowStudentCards ? "مفتوح للطلاب" : "مغلق"}
             </Badge>
+            {board.requireApproval === 1 && (
+              <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                مراجعة مطلوبة
+              </Badge>
+            )}
+            {board.requireApproval === 1 && pendingCards.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => publishAllMut.mutate({ boardId })}
+                disabled={publishAllMut.isPending}
+                className="text-green-700 border-green-300 hover:bg-green-50 font-medium"
+              >
+                ✅ نشر الجميع ({pendingCards.length})
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -270,17 +304,28 @@ export default function PadletBoard() {
               ? "max-w-2xl mx-auto flex flex-col gap-4"
               : "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
           }>
-            {sortedCards.map((card) => (
-              <CardItem
-                key={card.id}
-                card={card}
-                isTeacherView={true}
-                boardId={boardId}
-                onDelete={() => deleteCardMut.mutate({ cardId: card.id, boardId })}
-                onTogglePin={() => togglePinMut.mutate({ cardId: card.id, boardId, isPinned: card.isPinned === 0 })}
-                onCommentSaved={() => refetchCards()}
-              />
-            ))}
+            {sortedCards.map((card) => {
+              const typedCard = card as Card & { isPublished: number };
+              const isPending = typedCard.isTeacher === 0 && typedCard.isPublished === 0;
+              return (
+                <div key={card.id} className={isPending ? "relative" : ""}>
+                  {isPending && (
+                    <div className="absolute -top-2 -right-2 z-10 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full shadow font-bold">
+                      ⏳ قيد المراجعة
+                    </div>
+                  )}
+                  <CardItem
+                    card={card}
+                    isTeacherView={true}
+                    boardId={boardId}
+                    onDelete={() => deleteCardMut.mutate({ cardId: card.id, boardId })}
+                    onTogglePin={() => togglePinMut.mutate({ cardId: card.id, boardId, isPinned: card.isPinned === 0 })}
+                    onCommentSaved={() => refetchCards()}
+                    onPublish={isPending ? () => publishCardMut.mutate({ cardId: card.id, boardId }) : undefined}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -398,6 +443,13 @@ export default function PadletBoard() {
               <Label className="text-sm font-medium">السماح للطلاب بإضافة بطاقات</Label>
               <Switch checked={settingsAllow} onCheckedChange={setSettingsAllow} />
             </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">مراجعة المعلم قبل النشر</Label>
+                <p className="text-xs text-slate-400 mt-0.5">بطاقات الطلاب لا تظهر للآخرين حتى توافق عليها</p>
+              </div>
+              <Switch checked={settingsRequireApproval} onCheckedChange={setSettingsRequireApproval} />
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowSettings(false)}>إلغاء</Button>
@@ -420,6 +472,7 @@ function CardItem({
   onTogglePin,
   onLike,
   onCommentSaved,
+  onPublish,
 }: {
   card: Card;
   isTeacherView: boolean;
@@ -428,6 +481,7 @@ function CardItem({
   onTogglePin?: () => void;
   onLike?: () => void;
   onCommentSaved?: () => void;
+  onPublish?: () => void;
 }) {
   const [editingComment, setEditingComment] = useState(false);
   const [commentText, setCommentText] = useState(card.teacherComment ?? "");
@@ -489,6 +543,15 @@ function CardItem({
                 {onDelete && (
                   <button onClick={onDelete} className="text-xs text-red-400 hover:text-red-600 px-1.5 py-1 rounded-lg hover:bg-red-50 transition-colors">
                     🗑️
+                  </button>
+                )}
+                {onPublish && (
+                  <button
+                    onClick={onPublish}
+                    className="text-xs text-green-600 bg-green-50 hover:bg-green-100 px-2 py-1 rounded-lg transition-colors font-medium"
+                    title="نشر البطاقة"
+                  >
+                    ✅ نشر
                   </button>
                 )}
               </div>

@@ -54,7 +54,7 @@ export default function PadletStudent({ initialCode }: { initialCode?: string })
   const utils = trpc.useUtils();
 
   const { data: cards, isLoading: loadingCards, refetch: refetchCards } = trpc.padlet.getCards.useQuery(
-    { boardId: boardId ?? 0 },
+    { boardId: boardId ?? 0, studentName: studentName || undefined },
     { enabled: !!boardId, refetchInterval: 5000 }
   );
 
@@ -89,7 +89,7 @@ export default function PadletStudent({ initialCode }: { initialCode?: string })
     }
   };
 
-  const sortedCards = cards ? [...cards].sort((a, b) => {
+  const sortedCards = cards ? [...(cards as Array<Card & { isPublished: number }>)].sort((a, b) => {
     if (a.isPinned !== b.isPinned) return b.isPinned - a.isPinned;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   }) : [];
@@ -187,14 +187,24 @@ export default function PadletStudent({ initialCode }: { initialCode?: string })
               ? "max-w-2xl mx-auto flex flex-col gap-4"
               : "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
           }>
-            {sortedCards.map((card) => (
-              <CardItem
-                key={card.id}
-                card={card as Card}
-                isTeacherView={false}
-                onLike={!likedCards.has(card.id) ? () => likeMut.mutate({ cardId: card.id }) : undefined}
-              />
-            ))}
+            {sortedCards.map((card) => {
+              const typedCard = card as Card & { isPublished: number };
+              const isMyPendingCard = typedCard.authorName === studentName && typedCard.isTeacher === 0 && typedCard.isPublished === 0;
+              return (
+                <div key={card.id} className={isMyPendingCard ? "relative opacity-75" : ""}>
+                  {isMyPendingCard && (
+                    <div className="absolute -top-2 -right-2 z-10 bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full shadow font-bold">
+                      ⏳ قيد المراجعة
+                    </div>
+                  )}
+                  <CardItem
+                    card={card as Card}
+                    isTeacherView={false}
+                    onLike={!isMyPendingCard && !likedCards.has(card.id) ? () => likeMut.mutate({ cardId: card.id }) : undefined}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

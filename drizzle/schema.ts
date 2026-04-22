@@ -138,6 +138,8 @@ export const padletBoards = mysqlTable("padlet_boards", {
   bgColor: varchar("bgColor", { length: 32 }).default("#f8fafc").notNull(),
   // هل يسمح للطلاب بإضافة بطاقات
   allowStudentCards: int("allowStudentCards").default(1).notNull(),
+  // هل يتطلب موافقة المعلم قبل نشر بطاقات الطلاب
+  requireApproval: int("requireApproval").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -166,6 +168,8 @@ export const padletCards = mysqlTable("padlet_cards", {
   teacherComment: text("teacherComment"),
   // تقييم النجوم (0 = لا يوجد، 1-5 = عدد النجوم)
   starRating: int("starRating").default(0).notNull(),
+  // هل البطاقة منشورة (1=منشورة، 0=قيد المراجعة) - تُستخدم مع requireApproval
+  isPublished: int("isPublished").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

@@ -442,10 +442,12 @@ const padletRouter = router({
       description: z.string().max(500).optional(),
       layout: z.enum(["grid", "stream", "freeform"]).default("grid"),
       bgColor: z.string().default("#f8fafc"),
+      requireApproval: z.boolean().default(false),
     }))
     .mutation(async ({ ctx, input }) => {
       const shareCode = nanoid(10);
-      return createPadletBoard({ ...input, teacherId: ctx.user.id, shareCode });
+      const { requireApproval, ...rest } = input;
+      return createPadletBoard({ ...rest, teacherId: ctx.user.id, shareCode, requireApproval: requireApproval ? 1 : 0 });
     }),
 
   // جلب لوحات المعلم
@@ -480,14 +482,16 @@ const padletRouter = router({
       layout: z.enum(["grid", "stream", "freeform"]).optional(),
       bgColor: z.string().optional(),
       allowStudentCards: z.boolean().optional(),
+      requireApproval: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const board = await getPadletBoardById(input.id);
       if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND" });
-      const { id, allowStudentCards, ...rest } = input;
+      const { id, allowStudentCards, requireApproval, ...rest } = input;
       await updatePadletBoard(id, {
         ...rest,
         ...(allowStudentCards !== undefined ? { allowStudentCards: allowStudentCards ? 1 : 0 } : {}),
+        ...(requireApproval !== undefined ? { requireApproval: requireApproval ? 1 : 0 } : {}),
       });
       return { success: true };
     }),
@@ -508,10 +512,29 @@ const padletRouter = router({
     return { success: true };
   }),
 
-  // جلب بطاقات لوحة (عام)
+  // جلب بطاقات لوحة (عام) - يقبل studentName لإظهار بطاقة الطالب نفسه حتى لو كانت قيد المراجعة
   getCards: publicProcedure
-    .input(z.object({ boardId: z.number() }))
+    .input(z.object({ boardId: z.number(), studentName: z.string().optional() }))
     .query(async ({ input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board) throw new TRPCError({ code: "NOT_FOUND" });
+      const allCards = await getPadletCardsByBoard(input.boardId);
+      // إذا لم تكن اللوحة تتطلب موافقة، أرجع كل البطاقات
+      if (!board.requireApproval) return allCards;
+      // إذا كانت تتطلب موافقة: أرجع المنشورة + بطاقة الطالب نفسه (حتى لو كانت قيد المراجعة)
+      return allCards.filter(c =>
+        c.isPublished === 1 ||
+        c.isTeacher === 1 ||
+        (input.studentName && c.authorName === input.studentName)
+      );
+    }),
+
+  // جلب جميع البطاقات للمعلم (بما فيها غير المنشورة)
+  getAllCardsTeacher: protectedProcedure
+    .input(z.object({ boardId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
       return getPadletCardsByBoard(input.boardId);
     }),
 
@@ -545,7 +568,31 @@ const padletRouter = router({
       if (!board) throw new TRPCError({ code: "NOT_FOUND" });
       if (!board.allowStudentCards) throw new TRPCError({ code: "FORBIDDEN", message: "إضافة البطاقات معطلة حالياً" });
       const { studentName, boardId, ...rest } = input;
-      return createPadletCard({ ...rest, boardId, authorName: studentName, isTeacher: 0 });
+      // إذا كانت اللوحة تتطلب موافقة، البطاقة تبدأ غير منشورة
+      const isPublished = board.requireApproval ? 0 : 1;
+      return createPadletCard({ ...rest, boardId, authorName: studentName, isTeacher: 0, isPublished });
+    }),
+
+  // نشر بطاقة واحدة (for المعلم)
+  publishCard: protectedProcedure
+    .input(z.object({ cardId: z.number(), boardId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      await updatePadletCard(input.cardId, { isPublished: 1 });
+      return { success: true };
+    }),
+
+  // نشر جميع البطاقات المعلقة (for المعلم)
+  publishAllCards: protectedProcedure
+    .input(z.object({ boardId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const board = await getPadletBoardById(input.boardId);
+      if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const allCards = await getPadletCardsByBoard(input.boardId);
+      const pending = allCards.filter(c => c.isPublished === 0 && c.isTeacher === 0);
+      await Promise.all(pending.map(c => updatePadletCard(c.id, { isPublished: 1 })));
+      return { success: true, count: pending.length };
     }),
 
   // حذف بطاقة (للمعلم فقط)
