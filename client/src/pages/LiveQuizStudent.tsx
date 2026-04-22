@@ -30,6 +30,7 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
   const [hasJoined, setHasJoined] = useState(false);
   const [isKicked, setIsKicked] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
+  const [isStarted, setIsStarted] = useState(false);  // الاختبار بدأ ولا يمكن الانضمام
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answerResult, setAnswerResult] = useState<{ isCorrect: boolean; points?: number } | null>(null);
   const [liveState, setLiveState] = useState<LiveState | null>(null);
@@ -49,7 +50,9 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
   const joinLive = trpc.quiz.joinLive.useMutation({
     onSuccess: () => { setHasJoined(true); refetch(); },
     onError: (e) => {
-      if (e.message.includes("محظور") || e.data?.code === "FORBIDDEN") {
+      if (e.message.includes("بدأ الاختبار")) {
+        setIsStarted(true);
+      } else if (e.message.includes("محظور") || e.data?.code === "FORBIDDEN") {
         setIsBanned(true);
       } else {
         toast.error(e.message);
@@ -142,6 +145,23 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
             أنت محظور من الانضمام إلى هذا الاختبار.
             <br />
             تم إبلاغ الجهات المعنية عن تجاوزك.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // شاشة بدء الاختبار (حاول الانضمام بعد بدء الأسئلة)
+  if (isStarted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-6" dir="rtl">
+        <div className="text-center max-w-md">
+          <div className="text-8xl mb-6">⏰</div>
+          <h1 className="text-3xl font-bold text-white mb-4">الاختبار بدأ بالفعل</h1>
+          <p className="text-gray-300 text-lg leading-relaxed">
+            لا يمكن الانضمام بعد بدء الأسئلة.
+            <br />
+            انتظر الاختبار القادم.
           </p>
         </div>
       </div>

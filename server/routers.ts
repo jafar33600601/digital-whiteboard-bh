@@ -334,6 +334,11 @@ const quizRouter = router({
       const session = await getLiveSessionByQuiz(input.quizId);
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "لا توجد جلسة مباشرة نشطة" });
       if (session.state === "ended") throw new TRPCError({ code: "FORBIDDEN", message: "انتهت الجلسة" });
+      // منع الدخول بعد بدء الأسئلة (الجلسة مقفلة أو الحالة ليست waiting)
+      const sessionLocked = (session as { isLocked?: number }).isLocked ?? 0;
+      if (sessionLocked === 1 || session.state !== "waiting") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "بدأ الاختبار بالفعل، لا يمكن الانضمام الآن" });
+      }
       const participants = JSON.parse(session.participants || "[]") as { name: string; score: number }[];
       const exists = participants.find(p => p.name === input.studentName);
       if (!exists) {
@@ -364,6 +369,7 @@ const quizRouter = router({
         currentQuestionIndex: nextIndex,
         questionStartedAt: new Date(),
         currentAnswers: "[]",
+        isLocked: 1, // قفل الجلسة فور بدء الأسئلة
       });
       return { state: "question", questionIndex: nextIndex };
     }),
