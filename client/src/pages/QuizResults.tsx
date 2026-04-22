@@ -8,6 +8,7 @@ import { useState } from "react";
 export default function QuizResults({ params }: { params?: { id?: string } }) {
   const [, navigate] = useLocation();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const quizId = params?.id ? parseInt(params.id) : null;
 
   const { data: quiz } = trpc.quiz.getQuizById.useQuery(
@@ -30,6 +31,15 @@ export default function QuizResults({ params }: { params?: { id?: string } }) {
       refetch();
     },
     onError: () => toast.error("حدث خطأ أثناء الحذف"),
+  });
+
+  const deleteOneMut = trpc.quiz.deleteSubmission.useMutation({
+    onSuccess: () => {
+      toast.success("تم حذف استجابة الطالب بنجاح");
+      setDeletingId(null);
+      refetch();
+    },
+    onError: () => { toast.error("حدث خطأ أثناء الحذف"); setDeletingId(null); },
   });
 
   if (!quizId) return null;
@@ -186,6 +196,21 @@ export default function QuizResults({ params }: { params?: { id?: string } }) {
                     <div className={`w-14 text-center px-2 py-1 rounded-lg text-sm font-bold shrink-0 ${getScoreColor(r.percentage)}`}>
                       {r.percentage}%
                     </div>
+                    <button
+                      className="shrink-0 p-1.5 rounded-lg text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                      title="حذف استجابة هذا الطالب"
+                      disabled={deleteOneMut.isPending && deletingId === r.id}
+                      onClick={() => {
+                        if (confirm(`هل تريد حذف استجابة "${r.studentName}"؟`)) {
+                          setDeletingId(r.id);
+                          deleteOneMut.mutate({ submissionId: r.id, quizId: quizId! });
+                        }
+                      }}
+                    >
+                      {deleteOneMut.isPending && deletingId === r.id
+                        ? <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                        : <Trash2 className="w-4 h-4" />}
+                    </button>
                   </div>
                 ))}
             </div>

@@ -28,6 +28,8 @@ const OPTION_LABELS = ["أ", "ب", "ج", "د", "هـ", "و"];
 export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentProps) {
   const [studentName, setStudentName] = useState("");
   const [hasJoined, setHasJoined] = useState(false);
+  const [isKicked, setIsKicked] = useState(false);
+  const [isBanned, setIsBanned] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [answerResult, setAnswerResult] = useState<{ isCorrect: boolean; points?: number } | null>(null);
   const [liveState, setLiveState] = useState<LiveState | null>(null);
@@ -39,14 +41,20 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
   const { data: quiz } = trpc.quiz.getQuizByCode.useQuery({ shareCode });
   const { data: liveData, refetch } = trpc.quiz.getLiveState.useQuery(
     { quizId },
-    { refetchInterval: hasJoined ? 2000 : false, enabled: hasJoined }
+    { refetchInterval: hasJoined && !isKicked ? 2000 : false, enabled: hasJoined && !isKicked }
   );
 
   const music = useLiveQuizMusic();
 
   const joinLive = trpc.quiz.joinLive.useMutation({
     onSuccess: () => { setHasJoined(true); refetch(); },
-    onError: (e) => toast.error(e.message),
+    onError: (e) => {
+      if (e.message.includes("محظور") || e.data?.code === "FORBIDDEN") {
+        setIsBanned(true);
+      } else {
+        toast.error(e.message);
+      }
+    },
   });
 
   const submitLiveAnswer = trpc.quiz.submitLiveAnswer.useMutation({
@@ -64,6 +72,14 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
   useEffect(() => {
     if (liveData) {
       const newState = liveData as LiveState;
+      // فحص الطرد: إذا انضم الطالب ولم يعد اسمه في قائمة المشاركين
+      if (hasJoined && studentName && newState.state !== "ended" && newState.state !== "waiting") {
+        const stillInGame = newState.participants.some(p => p.name === studentName);
+        if (!stillInGame && !isKicked) {
+          setIsKicked(true);
+          return;
+        }
+      }
       // إعادة تعيين الإجابة عند سؤال جديد
       if (newState.currentQuestionIndex !== prevQIndexRef.current) {
         setSelectedAnswer(null);
@@ -72,7 +88,7 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
       }
       setLiveState(newState);
     }
-  }, [liveData]);
+  }, [liveData, hasJoined, studentName, isKicked]);
 
   // تشغيل الموسيقى حسب الحالة
   useEffect(() => {
@@ -114,6 +130,38 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
       : 0;
     submitLiveAnswer.mutate({ quizId, studentName, answerIndex, timeMs });
   };
+
+  // شاشة الحظر (محاولة الانضمام وهو محظور)
+  if (isBanned) {
+    return (
+      <div className="min-h-screen bg-red-950 flex items-center justify-center p-6" dir="rtl">
+        <div className="text-center max-w-md">
+          <div className="text-8xl mb-6">🚫</div>
+          <h1 className="text-3xl font-bold text-white mb-4">لا يمكنك الانضمام</h1>
+          <p className="text-red-300 text-lg leading-relaxed">
+            أنت محظور من الانضمام إلى هذا الاختبار.
+            <br />
+            تم إبلاغ الجهات المعنية عن تجاوزك.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // شاشة الطرد (تم طرده أثناء الاختبار)
+  if (isKicked) {
+    return (
+      <div className="min-h-screen bg-red-950 flex items-center justify-center p-6" dir="rtl">
+        <div className="text-center max-w-md">
+          <div className="text-8xl mb-6">🚫</div>
+          <h1 className="text-3xl font-bold text-white mb-4">تم إيقافك من الاختبار</h1>
+          <p className="text-red-300 text-lg leading-relaxed">
+            تم إبلاغ الجهات المعنية عن تجاوزك.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // صفحة إدخال الاسم
   if (!hasJoined) {
@@ -257,7 +305,7 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
               </>
             ) : (
               <>
-                <div className="text-6xl animate-pulse">⏱️</div>
+                <div className="text-6xl">✔️</div>
                 <p className="text-white text-xl">تم تسجيل إجابتك!</p>
                 <p className="text-white/70">في انتظار النتيجة...</p>
               </>

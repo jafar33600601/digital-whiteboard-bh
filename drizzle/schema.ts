@@ -116,12 +116,28 @@ export const liveQuizSessions = mysqlTable("live_quiz_sessions", {
   participants: longtext("participants").notNull(),
   // إجابات السؤال الحالي: JSON array of {studentName, answerIndex, timeMs}
   currentAnswers: longtext("currentAnswers").notNull(),
+  // الاختبار مقفل (لا يقبل طلاباً جدداً بعد البدء)
+  isLocked: int("isLocked").default(0).notNull(),
+  // قائمة الطلاب المطرودين: JSON array of studentName strings
+  kickedParticipants: longtext("kickedParticipants").notNull().default("[]"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export type LiveQuizSession = typeof liveQuizSessions.$inferSelect;
 export type InsertLiveQuizSession = typeof liveQuizSessions.$inferInsert;
+
+// جدول حظر IP المؤقت (24 ساعة)
+export const bannedIps = mysqlTable("banned_ips", {
+  id: int("id").autoincrement().primaryKey(),
+  ipAddress: varchar("ipAddress", { length: 64 }).notNull(),
+  reason: text("reason"),
+  bannedAt: timestamp("bannedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+});
+
+export type BannedIp = typeof bannedIps.$inferSelect;
+export type InsertBannedIp = typeof bannedIps.$inferInsert;
 
 // ===================== البادلت =====================
 

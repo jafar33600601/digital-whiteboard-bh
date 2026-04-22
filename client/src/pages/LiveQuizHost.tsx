@@ -70,6 +70,11 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
     onError: (e) => toast.error(e.message),
   });
 
+  const kickParticipant = trpc.quiz.kickParticipant.useMutation({
+    onSuccess: () => { toast.success("تم طرد الطالب وحظره لمدة 24 ساعة"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
   useEffect(() => {
     if (liveData) setLiveState(liveData as LiveState);
   }, [liveData]);
@@ -173,9 +178,18 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
             </div>
             <div className="flex flex-wrap gap-2">
               {liveState.participants.map((p, i) => (
-                <Badge key={i} className="bg-blue-500/50 text-white border-blue-400/50 text-sm py-1 px-3">
-                  {p.name}
-                </Badge>
+                <div key={i} className="flex items-center gap-1 bg-blue-500/30 border border-blue-400/40 rounded-full px-3 py-1">
+                  <span className="text-white text-sm font-medium">{p.name}</span>
+                  <button
+                    className="text-red-400 hover:text-red-300 ml-1 text-xs font-bold leading-none"
+                    title="طرد الطالب"
+                    onClick={() => {
+                      if (confirm(`هل تريد طرد وحظر "${p.name}"؟`)) {
+                        kickParticipant.mutate({ quizId, studentName: p.name });
+                      }
+                    }}
+                  >✕</button>
+                </div>
               ))}
               {liveState.participants.length === 0 && (
                 <p className="text-blue-300 text-sm">لم ينضم أحد بعد...</p>
@@ -191,7 +205,7 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
           disabled={nextQuestion.isPending || liveState.participants.length === 0}
         >
           <Play className="ml-2 w-6 h-6" />
-          ابدأ الأسئلة
+          ابدأ الأسئلة (مقفل للجدد)
         </Button>
         {liveState.participants.length === 0 && (
           <p className="text-yellow-300 text-sm">يجب أن ينضم طالب واحد على الأقل</p>

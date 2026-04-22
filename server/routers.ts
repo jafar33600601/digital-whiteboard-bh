@@ -55,6 +55,9 @@ import {
   deletePadletCard,
   updatePadletCard,
   likePadletCard,
+  banIp,
+  isIpBanned,
+  deleteQuizSubmission,
 } from "./db";
 import { storagePut } from "./storage";
 
@@ -431,6 +434,71 @@ const quizRouter = router({
       const session = await getLiveSessionByQuiz(input.quizId);
       if (session) await updateLiveSession(session.id, { state: "ended" });
       return { success: true };
+    }),
+
+  // طرد طالب من الكاهوت + حظر IP
+  kickParticipant: protectedProcedure
+    .input(z.object({ quizId: z.number(), studentName: z.string(), studentIp: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const session = await getLiveSessionByQuiz(input.quizId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      // إزالة الطالب من participants
+      const participants = JSON.parse(session.participants || "[]") as { name: string; score: number }[];
+      const filtered = participants.filter(p => p.name !== input.studentName);
+      // إضافة الاسم لقائمة المطرودين
+      const kicked = JSON.parse((session as { kickedParticipants?: string }).kickedParticipants || "[]") as string[];
+      if (!kicked.includes(input.studentName)) kicked.push(input.studentName);
+      await updateLiveSession(session.id, {
+        participants: JSON.stringify(filtered),
+        kickedParticipants: JSON.stringify(kicked),
+      } as Parameters<typeof updateLiveSession>[1]);
+      // حظر IP إذا تم تمريره
+      if (input.studentIp) {
+        await banIp(input.studentIp, `طرد من الكاهوت - الاسم: ${input.studentName}`);
+      }
+      return { success: true };
+    }),
+
+  // فحص حظر IP للطالب
+  checkBan: publicProcedure
+    .input(z.object({ ip: z.string() }))
+    .query(async ({ input }) => {
+      const banned = await isIpBanned(input.ip);
+      return { banned };
+    }),
+
+  // حذف استجابة طالب في الكويزيز العادي
+  deleteSubmission: protectedProcedure
+    .input(z.object({ submissionId: z.number(), quizId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      await deleteQuizSubmission(input.submissionId);
+      return { success: true };
+    }),
+
+  // حالة الجلسة المباشرة للطالب (تشمل kickedParticipants)
+  getLiveStateStudent: publicProcedure
+    .input(z.object({ quizId: z.number(), studentName: z.string() }))
+    .query(async ({ input }) => {
+      const session = await getLiveSessionByQuiz(input.quizId);
+      if (!session) return null;
+      const kicked = JSON.parse((session as { kickedParticipants?: string }).kickedParticipants || "[]") as string[];
+      const isKicked = kicked.includes(input.studentName);
+      return {
+        id: session.id,
+        state: session.state,
+        currentQuestionIndex: session.currentQuestionIndex,
+        questionStartedAt: session.questionStartedAt,
+        participants: JSON.parse(session.participants || "[]") as { name: string; score: number }[],
+        currentAnswers: JSON.parse(session.currentAnswers || "[]") as { studentName: string; answerIndex: number; timeMs: number }[],
+        isLocked: (session as { isLocked?: number }).isLocked ?? 0,
+        isKicked,
+      };
     }),
 });
 

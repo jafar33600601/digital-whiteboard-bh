@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -443,4 +443,31 @@ export async function likePadletCard(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.execute(`UPDATE padlet_cards SET likes = likes + 1 WHERE id = ${id}`);
+}
+
+// ===== Banned IPs =====
+export async function banIp(ipAddress: string, reason?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ساعة
+  const expiresStr = expiresAt.toISOString().slice(0, 19).replace('T', ' ');
+  await db.execute(
+    `INSERT INTO banned_ips (ipAddress, reason, expiresAt) VALUES ('${ipAddress.replace(/'/g, '')}', ${reason ? `'${reason.replace(/'/g, '')}'` : 'NULL'}, '${expiresStr}') ON DUPLICATE KEY UPDATE bannedAt=NOW(), expiresAt=VALUES(expiresAt), reason=VALUES(reason)`
+  );
+}
+export async function isIpBanned(ipAddress: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db.execute(
+    `SELECT id FROM banned_ips WHERE ipAddress = '${ipAddress.replace(/'/g, '')}' AND expiresAt > NOW() LIMIT 1`
+  );
+  const result = (rows as unknown as [unknown[]])[0];
+  return Array.isArray(result) && result.length > 0;
+}
+
+// ===== Quiz Submission Delete =====
+export async function deleteQuizSubmission(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(quizSubmissions).where(eq(quizSubmissions.id, id));
 }
