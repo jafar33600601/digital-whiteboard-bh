@@ -1162,7 +1162,7 @@ export const appRouter = router({
         return { canvasData: session.canvasData, title: session.title };
       }),
   }),
-    padlet: padletRouter,
+  padlet: padletRouter,
   quizizz: quizizzRouter,
 });
 // ===== Padlet Router =====

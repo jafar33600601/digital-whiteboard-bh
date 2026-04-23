@@ -147,12 +147,12 @@
 - [x] إصلاح: عند انتهاء وقت السؤال يظهر للطالب علامة خطأ حتى لو كانت إجابته صحيحة
 
 ## وضع Quizizz الجديد (2026-04-23)
-- [ ] إضافة جدول quizizz_sessions في قاعدة البيانات
-- [ ] إضافة جدول quizizz_answers لتتبع إجابات كل طالب
-- [ ] توليد موسيقى Quizizz بالذكاء الاصطناعي ورفعها
-- [ ] إضافة procedures الخادم: createQuizizzSession, joinQuizizz, submitQuizizzAnswer, getQuizizzState
-- [ ] تحديث نافذة المشاركة: 3 خيارات ملونة (كاهوت بنفسجي، Quizizz برتقالي، عادي أخضر)
-- [ ] بناء صفحة الطالب QuizizzStudent: تغذية فورية، إعادة عند الخطأ، مؤقت، نقاط
-- [ ] بناء صفحة المعلم QuizizzHost: لوحة متابعة مباشرة لتقدم الطلاب
-- [ ] شاشة النهاية: منصة تتويج + confetti
-- [ ] إضافة routes في App.tsx
+- [x] إضافة جدول quizizz_sessions في قاعدة البيانات
+- [x] إضافة جدول quizizz_answers لتتبع إجابات كل طالب
+- [x] توليد موسيقى Quizizz بالذكاء الاصطناعي ورفعها
+- [x] إضافة procedures الخادم: createQuizizzSession, joinQuizizz, submitQuizizzAnswer, getQuizizzState
+- [x] تحديث نافذة المشاركة: 3 خيارات ملونة (كاهوت بنفسجي، Quizizz برتقالي، عادي أخضر)
+- [x] بناء صفحة الطالب QuizizzStudent: تغذية فورية، إعادة عند الخطأ، مؤقت، نقاط
+- [x] بناء صفحة المعلم QuizizzHost: لوحة متابعة مباشرة لتقدم الطلاب
+- [x] شاشة النهاية: منصة تتويج + confetti
+- [x] إضافة routes في App.tsx
