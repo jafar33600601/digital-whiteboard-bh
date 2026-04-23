@@ -530,3 +530,8 @@ export async function deleteQuizizzSession(quizId: number) {
   }
   await db.delete(quizizzSessions).where(eq(quizizzSessions.quizId, quizId));
 }
+export async function deleteQuizizzProgressById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(quizizzProgress).where(eq(quizizzProgress.id, id));
+}

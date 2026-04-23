@@ -244,6 +244,24 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
           <p className="text-blue-200">في انتظار انضمام الطلاب...</p>
         </div>
 
+        {/* رابط الانضمام */}
+        {quiz?.shareCode && (
+          <div className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-2xl p-4 w-full max-w-2xl">
+            <p className="text-blue-300 text-xs mb-2 text-center">رابط انضمام الطلاب</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-white/20 rounded-lg px-3 py-2 font-mono text-sm text-white truncate">
+                {window.location.origin}/quiz-join/{quiz.shareCode}
+              </div>
+              <button
+                className="bg-blue-500 hover:bg-blue-400 text-white text-xs px-3 py-2 rounded-lg transition-colors"
+                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/quiz-join/${quiz.shareCode}`); }}
+              >
+                نسخ
+              </button>
+            </div>
+          </div>
+        )}
+
         <Card className="bg-white/10 border-white/20 backdrop-blur-sm w-full max-w-2xl">
           <CardContent className="p-6">
             <div className="flex items-center gap-3 mb-4">

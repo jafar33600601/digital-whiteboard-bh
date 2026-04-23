@@ -21,7 +21,7 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
   const quizId = params?.id ? parseInt(params.id) : null;
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [shareCode, setShareCode] = useState<string>("");
-  const [durationMinutes, setDurationMinutes] = useState(15);
+  const [durationMinutes, setDurationMinutes] = useState(5);
   const [phase, setPhase] = useState<"setup" | "live" | "ended">("setup");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [endsAt, setEndsAt] = useState<Date | null>(null);
@@ -90,6 +90,10 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
     onError: (err) => alert(err.message),
   });
 
+  const removeStudentMut = trpc.quizizz.removeStudent.useMutation({
+    onSuccess: () => refetchProgress(),
+  });
+
   const endSessionMut = trpc.quizizz.endSession.useMutation({
     onSuccess: () => {
       setPhase("ended");
@@ -129,19 +133,19 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
             <p className="text-sm font-semibold text-orange-700 mb-3">⏱ مدة الاختبار: <span className="text-lg font-black">{durationMinutes} دقيقة</span></p>
             <input
               type="range"
-              min={5}
-              max={60}
-              step={5}
+              min={1}
+              max={15}
+              step={1}
               value={durationMinutes}
               onChange={e => setDurationMinutes(Number(e.target.value))}
               className="w-full accent-orange-500"
             />
             <div className="flex justify-between text-xs text-orange-400 mt-1">
+              <span>1د</span>
               <span>5د</span>
+              <span>8د</span>
+              <span>12د</span>
               <span>15د</span>
-              <span>30د</span>
-              <span>45د</span>
-              <span>60د</span>
             </div>
           </div>
 
@@ -311,6 +315,17 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
                       {student.isFinished ? "✅ أنهى" : `${student.questionsCompleted}/${totalQ} سؤال`}
                     </p>
                   </div>
+                  <button
+                    title="حذف الطالب"
+                    onClick={() => {
+                      if (confirm(`حذف ${student.studentName} من الجلسة؟`)) {
+                        removeStudentMut.mutate({ sessionId: sessionId!, progressId: student.id });
+                      }
+                    }}
+                    className="text-red-400 hover:text-red-600 transition-colors p-1 rounded shrink-0 text-base"
+                  >
+                    🗑️
+                  </button>
                 </div>
               );
             })

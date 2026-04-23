@@ -66,6 +66,7 @@ import {
   updateQuizizzProgress,
   getAllQuizizzProgress,
   deleteQuizizzSession,
+  deleteQuizizzProgressById,
 } from "./db";
 import { storagePut } from "./storage";
 
@@ -882,6 +883,17 @@ const quizizzRouter = router({
       const quiz = await getQuizById(session.quizId);
       if (!quiz || quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
       await updateQuizizzSession(input.sessionId, { state: "ended" });
+      return { success: true };
+    }),
+  // حذف طالب من جلسة Quizizz
+  removeStudent: protectedProcedure
+    .input(z.object({ sessionId: z.number(), progressId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await getQuizizzSessionById(input.sessionId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      const quiz = await getQuizById(session.quizId);
+      if (!quiz || quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      await deleteQuizizzProgressById(input.progressId);
       return { success: true };
     }),
   // الطالب يتحقق من حالة الجلسة

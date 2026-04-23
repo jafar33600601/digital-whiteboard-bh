@@ -298,7 +298,8 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
               </div>
             )}
 
-            {/* شريط الرابط والأزرار */}
+            {/* شريط الرابط والأزرار - يُخفى في وضع Quizizz */}
+            {quizMode !== "quizizz" && (
             <div className="max-w-4xl mx-auto flex items-center gap-3">
               <div className={`text-xs px-2 py-1 rounded-full font-medium ${quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
                 {quiz.isPublished ? "✓ منشور" : "⚠ غير منشور"}
@@ -322,13 +323,21 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                   ▶ ابدأ المباشر
                 </Button>
               )}
-              {quizMode === "quizizz" && (
-                <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white gap-1 shrink-0"
-                  onClick={() => navigate(`/quizizz-host/${quizId}`)}>
-                  ▶ ابدأ الكويزيز
-                </Button>
-              )}
             </div>
+            )}
+            {/* زر Quizizz منفصل */}
+            {quizMode === "quizizz" && (
+            <div className="max-w-4xl mx-auto flex items-center gap-3">
+              <div className={`text-xs px-2 py-1 rounded-full font-medium ${quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {quiz.isPublished ? "✓ منشور" : "⚠ غير منشور"}
+              </div>
+              <p className="flex-1 text-sm text-orange-600">اضغط "ابدأ الكويزيز" لتحديد الوقت والحصول على رابط الطلاب</p>
+              <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white gap-1 shrink-0"
+                onClick={() => navigate(`/quizizz-host/${quizId}`)}>
+                ▶ ابدأ الكويزيز
+              </Button>
+            </div>
+            )}
             {!quiz.isPublished && (
               <p className="text-xs text-amber-600 max-w-4xl mx-auto">
                 انشر الاختبار أولاً حتى يتمكن الطلاب من الدخول
