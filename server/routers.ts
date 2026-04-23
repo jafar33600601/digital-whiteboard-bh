@@ -566,6 +566,17 @@ const quizRouter = router({
       if (!session) return null;
       const kicked = JSON.parse((session as { kickedParticipants?: string }).kickedParticipants || "[]") as string[];
       const isKicked = kicked.includes(input.studentName);
+      // جلب المدة الزمنية من جدول الاختبارات
+      const db = (await import("./db")).getDb;
+      const drizzleDb = await db();
+      let timeLimitSeconds = 30;
+      if (drizzleDb) {
+        const { quizzes } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const [quizRow] = await drizzleDb.select({ timeLimitSeconds: quizzes.timeLimitSeconds })
+          .from(quizzes).where(eq(quizzes.id, session.quizId)).limit(1);
+        if (quizRow) timeLimitSeconds = quizRow.timeLimitSeconds;
+      }
       return {
         id: session.id,
         state: session.state,
@@ -575,6 +586,7 @@ const quizRouter = router({
         currentAnswers: JSON.parse(session.currentAnswers || "[]") as { studentName: string; answerIndex: number; timeMs: number }[],
         isLocked: (session as { isLocked?: number }).isLocked ?? 0,
         isKicked,
+        timeLimitSeconds,
       };
     }),
 });

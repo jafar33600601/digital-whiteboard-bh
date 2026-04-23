@@ -90,9 +90,9 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
   const prevQIndexRef = useRef<number>(-1);
 
   const { data: quiz } = trpc.quiz.getQuizByCode.useQuery({ shareCode });
-  const { data: liveData, refetch } = trpc.quiz.getLiveState.useQuery(
-    { quizId },
-    { refetchInterval: hasJoined && !isKicked ? 2000 : false, enabled: hasJoined && !isKicked }
+  const { data: liveData, refetch } = trpc.quiz.getLiveStateStudent.useQuery(
+    { quizId, studentName: studentName || "" },
+    { refetchInterval: hasJoined && !isKicked ? 2000 : false, enabled: hasJoined && !!studentName }
   );
 
   const music = useLiveQuizMusic();
@@ -124,14 +124,11 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
 
   useEffect(() => {
     if (liveData) {
-      const newState = liveData as LiveState;
-      // فحص الطرد: إذا انضم الطالب ولم يعد اسمه في قائمة المشاركين
-      if (hasJoined && studentName && newState.state !== "ended" && newState.state !== "waiting") {
-        const stillInGame = newState.participants.some(p => p.name === studentName);
-        if (!stillInGame && !isKicked) {
-          setIsKicked(true);
-          return;
-        }
+      const newState = liveData as LiveState & { isKicked?: boolean };
+      // فحص الطرد من الخادم مباشرة (isKicked موثوق به 100%)
+      if (hasJoined && newState.isKicked && !isKicked) {
+        setIsKicked(true);
+        return;
       }
       // إعادة تعيين الإجابة عند سؤال جديد
       if (newState.currentQuestionIndex !== prevQIndexRef.current) {
@@ -141,7 +138,7 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
       }
       setLiveState(newState);
     }
-  }, [liveData, hasJoined, studentName, isKicked]);
+  }, [liveData, hasJoined, isKicked]);
 
   // تشغيل الموسيقى حسب الحالة
   useEffect(() => {
