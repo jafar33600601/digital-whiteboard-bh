@@ -298,8 +298,8 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
               </div>
             )}
 
-            {/* شريط الرابط والأزرار - يُخفى في وضع Quizizz */}
-            {quizMode !== "quizizz" && (
+            {/* شريط الرابط والأزرار - يظهر فقط في وضع عادي */}
+            {quizMode === "normal" && (
             <div className="max-w-4xl mx-auto flex items-center gap-3">
               <div className={`text-xs px-2 py-1 rounded-full font-medium ${quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
                 {quiz.isPublished ? "✓ منشور" : "⚠ غير منشور"}
@@ -311,18 +311,23 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                 onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success("تم نسخ الرابط!"); }}>
                 <Copy className="w-4 h-4" />نسخ
               </Button>
-              {quizMode === "normal" && (
-                <Button size="sm" variant="outline" className="gap-1 shrink-0"
-                  onClick={() => navigate(`/quiz-results/${quizId}`)}>
-                  النتائج
-                </Button>
-              )}
-              {quizMode === "live" && (
-                <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white gap-1 shrink-0"
-                  onClick={() => navigate(`/quiz-live/${quizId}`)}>
-                  ▶ ابدأ المباشر
-                </Button>
-              )}
+              <Button size="sm" variant="outline" className="gap-1 shrink-0"
+                onClick={() => navigate(`/quiz-results/${quizId}`)}>
+                النتائج
+              </Button>
+            </div>
+            )}
+            {/* زر ابدأ المباشر للكاهوت */}
+            {quizMode === "live" && (
+            <div className="max-w-4xl mx-auto flex items-center gap-3">
+              <div className={`text-xs px-2 py-1 rounded-full font-medium ${quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {quiz.isPublished ? "✓ منشور" : "⚠ غير منشور"}
+              </div>
+              <p className="flex-1 text-sm text-purple-600">اضغط "ابدأ المباشر" — سيظهر رابط الطلاب في شاشة الانتظار</p>
+              <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white gap-1 shrink-0"
+                onClick={() => navigate(`/quiz-live/${quizId}`)}>
+                ▶ ابدأ المباشر
+              </Button>
             </div>
             )}
             {/* زر Quizizz منفصل */}
@@ -343,11 +348,7 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                 انشر الاختبار أولاً حتى يتمكن الطلاب من الدخول
               </p>
             )}
-            {quizMode === "live" && quiz.isPublished && (
-              <p className="text-xs text-purple-600 max-w-4xl mx-auto">
-                💡 للكاهوت: أرسل الرابط للطلاب أولاً، ثم اضغط "ابدأ المباشر" — سيرى الطلاب شاشة انتظار حتى تبدأ
-              </p>
-            )}
+
             {quizMode === "quizizz" && quiz.isPublished && (
               <p className="text-xs text-orange-600 max-w-4xl mx-auto">
                 💡 للكويزيز: أرسل الرابط للطلاب، كل طالب يجيب بسرعته الخاصة مع تغذية راجعة فورية
