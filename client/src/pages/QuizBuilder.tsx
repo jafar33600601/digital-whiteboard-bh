@@ -211,30 +211,52 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
 
         {/* Share bar */}
         {shareVisible && (
-          <div className="bg-indigo-50 border-t border-indigo-100 px-4 py-3 space-y-3">
-            {/* نوع الاختبار */}
+          <div className="bg-slate-50 border-t border-slate-200 px-4 py-4 space-y-4">
+            {/* 3 خيارات ملونة */}
             <div className="max-w-4xl mx-auto">
-              <p className="text-xs font-semibold text-slate-600 mb-2">نوع الاختبار:</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => updateModeMut.mutate({ quizId: quizId!, mode: "normal" })}
-                  className={`flex-1 px-3 py-2 rounded-xl border-2 text-sm font-medium transition-all ${
-                    (quiz as unknown as { quizMode?: string }).quizMode !== "live"
-                      ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-indigo-300"
-                  }`}
-                >
-                  📝 عادي — الطالب يجيب بوقته · Quiziz
-                </button>
+              <p className="text-xs font-semibold text-slate-600 mb-3">اختر طريقة عرض الاختبار:</p>
+              <div className="grid grid-cols-3 gap-3">
+                {/* الكاهوت */}
                 <button
                   onClick={() => updateModeMut.mutate({ quizId: quizId!, mode: "live" })}
-                  className={`flex-1 px-3 py-2 rounded-xl border-2 text-sm font-medium transition-all ${
-                    (quiz as unknown as { quizMode?: string }).quizMode === "live"
-                      ? "border-purple-500 bg-purple-50 text-purple-700"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-purple-300"
+                  className={`relative flex flex-col items-center gap-2 px-3 py-4 rounded-2xl border-2 text-sm font-semibold transition-all ${
+                    quizMode === "live"
+                      ? "border-purple-500 bg-purple-600 text-white shadow-lg shadow-purple-200 scale-105"
+                      : "border-purple-200 bg-purple-50 text-purple-700 hover:border-purple-400 hover:bg-purple-100"
                   }`}
                 >
-                  ⚡ مباشر — المعلم يتحكم بالأسئلة · Kahoot
+                  {quizMode === "live" && <span className="absolute top-2 right-2 text-xs bg-white text-purple-600 rounded-full px-1.5 py-0.5 font-bold">✓</span>}
+                  <span className="text-2xl">🎮</span>
+                  <span className="text-base">كاهوت</span>
+                  <span className={`text-xs font-normal text-center leading-tight ${quizMode === "live" ? "text-purple-100" : "text-purple-500"}`}>تنافس مباشر — المعلم يتحكم</span>
+                </button>
+                {/* Quizizz */}
+                <button
+                  onClick={() => updateModeMut.mutate({ quizId: quizId!, mode: "quizizz" })}
+                  className={`relative flex flex-col items-center gap-2 px-3 py-4 rounded-2xl border-2 text-sm font-semibold transition-all ${
+                    quizMode === "quizizz"
+                      ? "border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-200 scale-105"
+                      : "border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-400 hover:bg-orange-100"
+                  }`}
+                >
+                  {quizMode === "quizizz" && <span className="absolute top-2 right-2 text-xs bg-white text-orange-600 rounded-full px-1.5 py-0.5 font-bold">✓</span>}
+                  <span className="text-2xl">⚡</span>
+                  <span className="text-base">كويزيز</span>
+                  <span className={`text-xs font-normal text-center leading-tight ${quizMode === "quizizz" ? "text-orange-100" : "text-orange-500"}`}>كل طالب بسرعته — تغذية فورية</span>
+                </button>
+                {/* الاختبار العادي */}
+                <button
+                  onClick={() => updateModeMut.mutate({ quizId: quizId!, mode: "normal" })}
+                  className={`relative flex flex-col items-center gap-2 px-3 py-4 rounded-2xl border-2 text-sm font-semibold transition-all ${
+                    quizMode === "normal"
+                      ? "border-emerald-500 bg-emerald-600 text-white shadow-lg shadow-emerald-200 scale-105"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100"
+                  }`}
+                >
+                  {quizMode === "normal" && <span className="absolute top-2 right-2 text-xs bg-white text-emerald-600 rounded-full px-1.5 py-0.5 font-bold">✓</span>}
+                  <span className="text-2xl">📝</span>
+                  <span className="text-base">اختبار عادي</span>
+                  <span className={`text-xs font-normal text-center leading-tight ${quizMode === "normal" ? "text-emerald-100" : "text-emerald-500"}`}>هادئ — النتيجة في النهاية</span>
                 </button>
               </div>
             </div>
@@ -275,11 +297,13 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                 </div>
               </div>
             )}
+
+            {/* شريط الرابط والأزرار */}
             <div className="max-w-4xl mx-auto flex items-center gap-3">
               <div className={`text-xs px-2 py-1 rounded-full font-medium ${quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
                 {quiz.isPublished ? "✓ منشور" : "⚠ غير منشور"}
               </div>
-              <div className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm text-slate-600 font-mono truncate">
+              <div className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 font-mono truncate">
                 {shareUrl}
               </div>
               <Button size="sm" variant="outline" className="gap-1 shrink-0"
@@ -298,6 +322,12 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
                   ▶ ابدأ المباشر
                 </Button>
               )}
+              {quizMode === "quizizz" && (
+                <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white gap-1 shrink-0"
+                  onClick={() => navigate(`/quizizz-host/${quizId}`)}>
+                  ▶ ابدأ الكويزيز
+                </Button>
+              )}
             </div>
             {!quiz.isPublished && (
               <p className="text-xs text-amber-600 max-w-4xl mx-auto">
@@ -306,7 +336,12 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
             )}
             {quizMode === "live" && quiz.isPublished && (
               <p className="text-xs text-purple-600 max-w-4xl mx-auto">
-                💡 للاختبار المباشر: أرسل الرابط للطلاب أولاً، ثم اضغط "ابدأ المباشر" — سيرى الطلاب شاشة انتظار حتى تبدأ
+                💡 للكاهوت: أرسل الرابط للطلاب أولاً، ثم اضغط "ابدأ المباشر" — سيرى الطلاب شاشة انتظار حتى تبدأ
+              </p>
+            )}
+            {quizMode === "quizizz" && quiz.isPublished && (
+              <p className="text-xs text-orange-600 max-w-4xl mx-auto">
+                💡 للكويزيز: أرسل الرابط للطلاب، كل طالب يجيب بسرعته الخاصة مع تغذية راجعة فورية
               </p>
             )}
           </div>

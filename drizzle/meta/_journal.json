@@ -92,6 +92,20 @@
       "when": 1776870198333,
       "tag": "0012_wide_exodus",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1776917753995,
+      "tag": "0013_big_sage",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1776918273113,
+      "tag": "0014_narrow_zaladane",
+      "breakpoints": true
     }
   ]
 }

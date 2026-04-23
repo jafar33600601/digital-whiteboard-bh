@@ -1,0 +1,1 @@
+ALTER TABLE `quizzes` MODIFY COLUMN `quizMode` enum('normal','live','quizizz') NOT NULL DEFAULT 'normal';

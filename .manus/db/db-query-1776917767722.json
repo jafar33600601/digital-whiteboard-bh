@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `quizizz_progress` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`sessionId` int NOT NULL,\n\t`studentName` varchar(255) NOT NULL,\n\t`currentQuestion` int NOT NULL DEFAULT 0,\n\t`questionsCompleted` int NOT NULL DEFAULT 0,\n\t`score` int NOT NULL DEFAULT 0,\n\t`answers` longtext NOT NULL,\n\t`isFinished` int NOT NULL DEFAULT 0,\n\t`finishedAt` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `quizizz_progress_id` PRIMARY KEY(`id`)\n);\n",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2awLMqTJ8fQhqeP.95caa43edd78 --database k9iy4r77CzdDvrofniax4Z --execute CREATE TABLE `quizizz_progress` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`sessionId` int NOT NULL,\n\t`studentName` varchar(255) NOT NULL,\n\t`currentQuestion` int NOT NULL DEFAULT 0,\n\t`questionsCompleted` int NOT NULL DEFAULT 0,\n\t`score` int NOT NULL DEFAULT 0,\n\t`answers` longtext NOT NULL,\n\t`isFinished` int NOT NULL DEFAULT 0,\n\t`finishedAt` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `quizizz_progress_id` PRIMARY KEY(`id`)\n);\n",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1611
+}

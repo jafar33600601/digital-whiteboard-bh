@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE `quizzes` MODIFY COLUMN `quizMode` enum('normal','live','quizizz') NOT NULL DEFAULT 'normal';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway05.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2awLMqTJ8fQhqeP.95caa43edd78 --database k9iy4r77CzdDvrofniax4Z --execute ALTER TABLE `quizzes` MODIFY COLUMN `quizMode` enum('normal','live','quizizz') NOT NULL DEFAULT 'normal';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1896
+}

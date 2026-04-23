@@ -58,6 +58,14 @@ import {
   banIp,
   isIpBanned,
   deleteQuizSubmission,
+  createQuizizzSession,
+  getQuizizzSessionByCode,
+  getQuizizzSessionById,
+  updateQuizizzSession,
+  getOrCreateQuizizzProgress,
+  updateQuizizzProgress,
+  getAllQuizizzProgress,
+  deleteQuizizzSession,
 } from "./db";
 import { storagePut } from "./storage";
 
@@ -282,7 +290,7 @@ const quizRouter = router({
 
   // تحديث نوع الاختبار (normal/live)
   updateMode: protectedProcedure
-    .input(z.object({ quizId: z.number(), mode: z.enum(["normal", "live"]) }))
+    .input(z.object({ quizId: z.number(), mode: z.enum(["normal", "live", "quizizz"]) }))
     .mutation(async ({ ctx, input }) => {
       const quiz = await getQuizById(input.quizId);
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
@@ -787,6 +795,106 @@ const padletRouter = router({
 });
 
 
+// ===== Quizizz Router =====
+const quizizzRouter = router({
+  // إنشاء جلسة Quizizz جديدة (المعلم)
+  createSession: protectedProcedure
+    .input(z.object({ quizId: z.number(), durationMinutes: z.number().nullable() }))
+    .mutation(async ({ ctx, input }) => {
+      const quiz = await getQuizById(input.quizId);
+      if (!quiz || quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const session = await createQuizizzSession(input.quizId, input.durationMinutes);
+      return session;
+    }),
+  // الطالب ينضم للجلسة
+  joinSession: publicProcedure
+    .input(z.object({ shareCode: z.string(), studentName: z.string().min(1).max(100) }))
+    .mutation(async ({ input }) => {
+      const session = await getQuizizzSessionByCode(input.shareCode);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "رمز الجلسة غير صحيح" });
+      if (session.state === "ended") throw new TRPCError({ code: "BAD_REQUEST", message: "انتهت الجلسة" });
+      const quiz = await getQuizById(session.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      const questions = await getQuestionsByQuiz(session.quizId);
+      const progress = await getOrCreateQuizizzProgress(session.id, input.studentName);
+      return { session, quiz, questions, progress };
+    }),
+  // الطالب يجيب على سؤال
+  submitAnswer: publicProcedure
+    .input(z.object({
+      sessionId: z.number(),
+      studentName: z.string(),
+      questionIndex: z.number(),
+      answerIndex: z.number(),
+      isRetry: z.boolean().default(false),
+    }))
+    .mutation(async ({ input }) => {
+      const session = await getQuizizzSessionById(input.sessionId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      const quiz = await getQuizById(session.quizId);
+      if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
+      const questions = await getQuestionsByQuiz(session.quizId);
+      const question = questions[input.questionIndex];
+      if (!question) throw new TRPCError({ code: "NOT_FOUND" });
+      const isCorrect = question.correctAnswer === input.answerIndex;
+      // نقاط: 1000 للإجابة الأولى الصحيحة، 500 للمحاولة الثانية
+      const pointsEarned = isCorrect ? (input.isRetry ? 500 : 1000) : 0;
+      const progress = await getOrCreateQuizizzProgress(input.sessionId, input.studentName);
+      const answers: Array<{questionIndex: number; answerIndex: number; isCorrect: boolean; attempts: number; pointsEarned: number}> = JSON.parse(progress.answers || "[]");
+      const existingIdx = answers.findIndex(a => a.questionIndex === input.questionIndex);
+      if (existingIdx >= 0) {
+        answers[existingIdx] = { questionIndex: input.questionIndex, answerIndex: input.answerIndex, isCorrect, attempts: answers[existingIdx].attempts + 1, pointsEarned };
+      } else {
+        answers.push({ questionIndex: input.questionIndex, answerIndex: input.answerIndex, isCorrect, attempts: 1, pointsEarned });
+      }
+      const newScore = answers.reduce((sum, a) => sum + a.pointsEarned, 0);
+      const questionsCompleted = isCorrect ? progress.questionsCompleted + (input.isRetry ? 0 : 1) : progress.questionsCompleted;
+      const nextQuestion = isCorrect ? input.questionIndex + 1 : input.questionIndex;
+      const isFinished = isCorrect && nextQuestion >= questions.length ? 1 : 0;
+      await updateQuizizzProgress(progress.id, {
+        answers: JSON.stringify(answers),
+        score: newScore,
+        questionsCompleted,
+        currentQuestion: nextQuestion,
+        isFinished,
+        finishedAt: isFinished ? new Date() : undefined,
+      });
+      return { isCorrect, pointsEarned, nextQuestion, isFinished: isFinished === 1, totalQuestions: questions.length };
+    }),
+  // المعلم يرى تقدم جميع الطلاب
+  getProgress: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const session = await getQuizizzSessionById(input.sessionId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      const quiz = await getQuizById(session.quizId);
+      if (!quiz || quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const progress = await getAllQuizizzProgress(input.sessionId);
+      const questions = await getQuestionsByQuiz(session.quizId);
+      return { session, quiz, progress, totalQuestions: questions.length };
+    }),
+  // المعلم ينهي الجلسة
+  endSession: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await getQuizizzSessionById(input.sessionId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      const quiz = await getQuizById(session.quizId);
+      if (!quiz || quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      await updateQuizizzSession(input.sessionId, { state: "ended" });
+      return { success: true };
+    }),
+  // الطالب يتحقق من حالة الجلسة
+  getSessionState: publicProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .query(async ({ input }) => {
+      const session = await getQuizizzSessionById(input.sessionId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      return { state: session.state, endsAt: session.endsAt };
+    }),
+});
+
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -1054,9 +1162,8 @@ export const appRouter = router({
         return { canvasData: session.canvasData, title: session.title };
       }),
   }),
-  padlet: padletRouter,
+    padlet: padletRouter,
+  quizizz: quizizzRouter,
 });
-
-
 // ===== Padlet Router =====
 export type AppRouter = typeof appRouter;

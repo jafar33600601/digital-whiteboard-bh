@@ -16,6 +16,8 @@ import LiveQuizStudent from "./pages/LiveQuizStudent";
 import LiveQuizResults from "./pages/LiveQuizResults";
 import PadletBoard from "./pages/PadletBoard";
 import PadletStudent from "./pages/PadletStudent";
+import QuizizzHost from "./pages/QuizizzHost";
+import QuizizzStudent from "./pages/QuizizzStudent";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
@@ -135,6 +137,8 @@ function Router() {
       <Route path="/quiz-live/:id" component={LiveQuizHostRoute} />
       <Route path="/quiz-live-results/:id" component={LiveQuizResultsRoute} />
       <Route path="/quiz-join/:code" component={LiveQuizStudentRoute} />
+      <Route path="/quizizz-host/:id" component={QuizizzHost} />
+      <Route path="/quizizz/:code" component={QuizizzStudent} />
       <Route path="/padlet/:id" component={PadletBoardRoute} />
       <Route path="/padlet-join" component={() => <PadletStudent />} />
       <Route path="/padlet-join/:code" component={PadletStudentJoinRoute} />

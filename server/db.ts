@@ -1,6 +1,6 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, type InsertQuizizzSession, type InsertQuizizzProgress } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -471,4 +471,62 @@ export async function deleteQuizSubmission(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(quizSubmissions).where(eq(quizSubmissions.id, id));
+}
+
+// ===================== Quizizz helpers =====================
+export async function createQuizizzSession(quizId: number, durationMinutes: number | null): Promise<typeof quizizzSessions.$inferSelect> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const shareCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const endsAt = durationMinutes ? new Date(Date.now() + durationMinutes * 60 * 1000) : null;
+  await db.insert(quizizzSessions).values({ quizId, shareCode, state: "active", endsAt: endsAt ?? undefined });
+  const [session] = await db.select().from(quizizzSessions).where(eq(quizizzSessions.shareCode, shareCode));
+  return session;
+}
+export async function getQuizizzSessionByCode(shareCode: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const [session] = await db.select().from(quizizzSessions).where(eq(quizizzSessions.shareCode, shareCode));
+  return session ?? null;
+}
+export async function getQuizizzSessionById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [session] = await db.select().from(quizizzSessions).where(eq(quizizzSessions.id, id));
+  return session ?? null;
+}
+export async function updateQuizizzSession(id: number, data: Partial<InsertQuizizzSession>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(quizizzSessions).set(data).where(eq(quizizzSessions.id, id));
+}
+export async function getOrCreateQuizizzProgress(sessionId: number, studentName: string): Promise<typeof quizizzProgress.$inferSelect> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [existing] = await db.select().from(quizizzProgress)
+    .where(and(eq(quizizzProgress.sessionId, sessionId), eq(quizizzProgress.studentName, studentName)));
+  if (existing) return existing;
+  await db.insert(quizizzProgress).values({ sessionId, studentName, currentQuestion: 0, questionsCompleted: 0, score: 0, answers: "[]", isFinished: 0 });
+  const [created] = await db.select().from(quizizzProgress)
+    .where(and(eq(quizizzProgress.sessionId, sessionId), eq(quizizzProgress.studentName, studentName)));
+  return created;
+}
+export async function updateQuizizzProgress(id: number, data: Partial<InsertQuizizzProgress>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(quizizzProgress).set(data).where(eq(quizizzProgress.id, id));
+}
+export async function getAllQuizizzProgress(sessionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(quizizzProgress).where(eq(quizizzProgress.sessionId, sessionId));
+}
+export async function deleteQuizizzSession(quizId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const sessions = await db.select().from(quizizzSessions).where(eq(quizizzSessions.quizId, quizId));
+  for (const s of sessions) {
+    await db.delete(quizizzProgress).where(eq(quizizzProgress.sessionId, s.id));
+  }
+  await db.delete(quizizzSessions).where(eq(quizizzSessions.quizId, quizId));
 }

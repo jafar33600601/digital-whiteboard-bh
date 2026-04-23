@@ -63,7 +63,7 @@ export const quizzes = mysqlTable("quizzes", {
   // مدة كل سؤال بالثواني في وضع الكاهوت (0 = بلا حد زمني)
   timeLimitSeconds: int("timeLimitSeconds").default(30).notNull(),
   // quizMode: normal = الطالب يجيب بوقته | live = كاهوت-style
-  quizMode: mysqlEnum("quizMode", ["normal", "live"]).default("normal").notNull(),
+  quizMode: mysqlEnum("quizMode", ["normal", "live", "quizizz"]).default("normal").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -194,3 +194,44 @@ export const padletCards = mysqlTable("padlet_cards", {
 
 export type PadletCard = typeof padletCards.$inferSelect;
 export type InsertPadletCard = typeof padletCards.$inferInsert;
+
+// ===================== Quizizz-style sessions =====================
+
+// جدول جلسات Quizizz (كل طالب بسرعته مع تغذية فورية)
+export const quizizzSessions = mysqlTable("quizizz_sessions", {
+  id: int("id").autoincrement().primaryKey(),
+  quizId: int("quizId").notNull(),
+  shareCode: varchar("shareCode", { length: 32 }).notNull().unique(),
+  // الحالة: waiting=انتظار | active=جاري | ended=انتهى
+  state: mysqlEnum("state", ["waiting", "active", "ended"]).default("waiting").notNull(),
+  // وقت الانتهاء (ملليثاني epoch) - null = بلا حد زمني
+  endsAt: timestamp("endsAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type QuizizzSession = typeof quizizzSessions.$inferSelect;
+export type InsertQuizizzSession = typeof quizizzSessions.$inferInsert;
+
+// جدول تتبع تقدم كل طالب في Quizizz
+export const quizizzProgress = mysqlTable("quizizz_progress", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  studentName: varchar("studentName", { length: 255 }).notNull(),
+  // السؤال الحالي (0-based)
+  currentQuestion: int("currentQuestion").default(0).notNull(),
+  // عدد الأسئلة المنجزة
+  questionsCompleted: int("questionsCompleted").default(0).notNull(),
+  // النقاط الإجمالية
+  score: int("score").default(0).notNull(),
+  // تفاصيل إجابات كل سؤال: JSON array of {questionIndex, answerIndex, isCorrect, attempts, pointsEarned}
+  answers: longtext("answers").notNull(),
+  // هل أنهى الطالب جميع الأسئلة
+  isFinished: int("isFinished").default(0).notNull(),
+  finishedAt: timestamp("finishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type QuizizzProgress = typeof quizizzProgress.$inferSelect;
+export type InsertQuizizzProgress = typeof quizizzProgress.$inferInsert;
