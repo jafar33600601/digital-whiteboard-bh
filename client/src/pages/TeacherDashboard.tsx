@@ -9,7 +9,7 @@ import { exportSubmissionsToPDF } from "@/lib/exportPDF";
 
 // مكوّن عرض سبورة الطالب لحظة بلحظة (يستعلم كل ثانيتين)
 function LiveBroadcastCanvas({ submissionId }: { submissionId: number }) {
-  const { data: liveData, dataUpdatedAt } = trpc.whiteboard.getLiveCanvas.useQuery(
+  const { data: liveData } = trpc.whiteboard.getLiveCanvas.useQuery(
     { submissionId },
     { refetchInterval: 2000 }
   );
@@ -21,10 +21,10 @@ function LiveBroadcastCanvas({ submissionId }: { submissionId: number }) {
       </div>
     );
   }
+  // بدون key=dataUpdatedAt حتى لا يُعاد بناء المكوّن وتظهر شخابيط مؤقتة
+  // initialData يتغيّر تلقائياً عبر useEffect داخل WhiteboardCanvas
   return (
-    // key=dataUpdatedAt يجبر إعادة mount عند كل تحديث لضمان إعادة رسم السبورة
     <WhiteboardCanvas
-      key={dataUpdatedAt}
       readOnly={true}
       initialData={liveData.canvasData}
       bgColor="#ffffff"
@@ -101,7 +101,7 @@ export default function TeacherDashboard() {
   const { data: submissions, isLoading: loadingSubmissions, refetch: refetchSubmissions } =
     trpc.whiteboard.getSubmissions.useQuery(
       { sessionId },
-      { enabled: !!sessionId, refetchInterval: 10000 }
+      { enabled: !!sessionId, refetchInterval: 3000 }
     );
 
   const { data: selectedSubmission, isLoading: loadingSelected, refetch: refetchSelected } =
