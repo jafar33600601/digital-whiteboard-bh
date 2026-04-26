@@ -166,8 +166,9 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
     const [isDrawing, setIsDrawing] = useState(false);
     const [elements, setElements] = useState<CanvasElement[]>([]);
     const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
-    // (text drag refs removed — click-to-place mode)
-
+     // (text drag refs removed — click-to-place mode)
+    // ref لـ submitText لتجنب stale closure
+    const submitTextRef = useRef<() => void>(() => {});
     // text input overlay state
     const [textInput, setTextInput] = useState<{
       id: string | null;       // null = جديد، string = تعديل موجود
@@ -470,7 +471,7 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       if (tool === "text") {
         // إذا كان هناك نص مفتوح، احفظه أولاً
         if (textInput.visible) {
-          submitText();
+          submitTextRef.current();
           return;
         }
         const fontSize = lineWidth * 6 + 10;
@@ -629,6 +630,7 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
     }, [isDrawing, tool, currentPath, color, lineWidth, notifyChange]);
 
     // ── text submit ──────────────────────────────────────────────────────────
+    // تحديث الـ ref بعد كل تغيير في textInput
     const submitText = useCallback(() => {
       if (!textInput.value.trim()) {
         // إغلاق المربع بدون حفظ (لا نضيف عنصر فارغ)
@@ -677,8 +679,9 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       }
       setTextInput(t => ({ ...t, visible: false, value: "" }));
     }, [textInput, notifyChange]);
-
-    // ── double-click to edit text ────────────────────────────────────────────
+    // تحديث submitTextRef ليشير دائماً إلى آخر نسخة من submitText
+    submitTextRef.current = submitText;
+    // ── double-click to edit textt ────────────────────────────────────────────
     const handleDoubleClick = useCallback((e: React.MouseEvent) => {
       if (readOnly) return;
       const canvas = canvasRef.current;
@@ -955,9 +958,9 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
                   if (e.key === "Escape") { setTextInput(t => ({ ...t, visible: false })); e.preventDefault(); }
                   // Enter: سطر جديد (السلوك الافتراضي للـ textarea)
                   // Ctrl+Enter: حفظ وإغلاق
-                  if (e.key === "Enter" && e.ctrlKey) { submitText(); e.preventDefault(); }
+                  if (e.key === "Enter" && e.ctrlKey) { submitTextRef.current(); e.preventDefault(); }
                 }}
-                onBlur={submitText}
+                onBlur={() => submitTextRef.current()}
                 className="w-full h-full border-2 border-green-500 rounded px-2 py-1 bg-white/95 shadow-lg outline-none resize"
                 style={{
                   color: textInput.color,
