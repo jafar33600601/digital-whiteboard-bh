@@ -48,6 +48,7 @@ export default function QuizizzStudent({ params }: { params?: { code?: string } 
   const [isRetry, setIsRetry] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [phase, setPhase] = useState<"join" | "playing" | "finished">("join");
+  const [joinError, setJoinError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -117,7 +118,7 @@ export default function QuizizzStudent({ params }: { params?: { code?: string } 
       }
     },
     onError: (err) => {
-      alert(err.message);
+      setJoinError(err.message);
     }
   });
 
@@ -200,8 +201,14 @@ export default function QuizizzStudent({ params }: { params?: { code?: string } 
             className="text-center text-lg mb-4 rounded-xl border-2 border-orange-200 focus:border-orange-400"
             dir="rtl"
           />
+          {joinError && (
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm font-medium flex items-center gap-2">
+              <span className="text-xl">{joinError.includes("مغلقة") ? "🔒" : "⚠️"}</span>
+              <span>{joinError}</span>
+            </div>
+          )}
           <Button
-            onClick={handleJoin}
+            onClick={() => { setJoinError(null); handleJoin(); }}
             disabled={!nameInput.trim() || joinMut.isPending}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white text-lg py-3 rounded-xl font-bold"
           >

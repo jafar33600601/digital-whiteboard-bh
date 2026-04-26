@@ -826,6 +826,7 @@ const quizizzRouter = router({
       const session = await getQuizizzSessionByCode(input.shareCode);
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "رمز الجلسة غير صحيح" });
       if (session.state === "ended") throw new TRPCError({ code: "BAD_REQUEST", message: "انتهت الجلسة" });
+      if (session.isLocked === 1) throw new TRPCError({ code: "BAD_REQUEST", message: "الجلسة مغلقة حالياً. انتظر حتى يفتحها المعلم" });
       const quiz = await getQuizById(session.quizId);
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
       const questions = await getQuestionsByQuiz(session.quizId);
@@ -914,7 +915,19 @@ const quizizzRouter = router({
     .query(async ({ input }) => {
       const session = await getQuizizzSessionById(input.sessionId);
       if (!session) throw new TRPCError({ code: "NOT_FOUND" });
-      return { state: session.state, endsAt: session.endsAt };
+      return { state: session.state, endsAt: session.endsAt, isLocked: session.isLocked === 1 };
+    }),
+  // المعلم يفتح/يغلق الجلسة
+  toggleSessionLock: protectedProcedure
+    .input(z.object({ sessionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const session = await getQuizizzSessionById(input.sessionId);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      const quiz = await getQuizById(session.quizId);
+      if (!quiz || quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      const newLocked = session.isLocked === 1 ? 0 : 1;
+      await updateQuizizzSession(input.sessionId, { isLocked: newLocked });
+      return { isLocked: newLocked === 1 };
     }),
 });
 

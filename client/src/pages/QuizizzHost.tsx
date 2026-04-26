@@ -25,6 +25,7 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
   const [phase, setPhase] = useState<"setup" | "live" | "ended">("setup");
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [endsAt, setEndsAt] = useState<Date | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const confettiFired = useRef(false);
@@ -94,6 +95,9 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
     onSuccess: () => refetchProgress(),
   });
 
+  const toggleLockMut = trpc.quizizz.toggleSessionLock.useMutation({
+    onSuccess: (data) => setIsLocked(data.isLocked),
+  });
   const endSessionMut = trpc.quizizz.endSession.useMutation({
     onSuccess: () => {
       setPhase("ended");
@@ -253,13 +257,26 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
           <div className={`rounded-xl px-4 py-2 font-black text-2xl ${isUrgent ? "bg-red-500 text-white animate-pulse" : "bg-white/20 backdrop-blur text-white"}`}>
             {timeMinutes !== null ? `${timeMinutes}:${String(timeSeconds).padStart(2, "0")}` : "--:--"}
           </div>
-          <Button
-            variant="outline"
-            className="bg-white/20 border-white/30 text-white hover:bg-white/30"
-            onClick={handleEnd}
-          >
-            إنهاء الجلسة
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className={`border-white/30 text-white hover:bg-white/30 ${
+                isLocked ? "bg-red-500/80" : "bg-green-500/50"
+              }`}
+              onClick={() => sessionId && toggleLockMut.mutate({ sessionId })}
+              disabled={toggleLockMut.isPending}
+              title={isLocked ? "الجلسة مغلقة - اضغط لفتحها" : "الجلسة مفتوحة - اضغط لإغلاقها"}
+            >
+              {isLocked ? "🔒 مغلقة" : "🔓 مفتوحة"}
+            </Button>
+            <Button
+              variant="outline"
+              className="bg-white/20 border-white/30 text-white hover:bg-white/30"
+              onClick={handleEnd}
+            >
+              إنهاء الجلسة
+            </Button>
+          </div>
         </div>
 
         {/* رابط للطلاب */}

@@ -204,6 +204,8 @@ export const quizizzSessions = mysqlTable("quizizz_sessions", {
   shareCode: varchar("shareCode", { length: 32 }).notNull().unique(),
   // الحالة: waiting=انتظار | active=جاري | ended=انتهى
   state: mysqlEnum("state", ["waiting", "active", "ended"]).default("waiting").notNull(),
+  // هل الجلسة مغلقة (1=مغلقة، 0=مفتوحة) - تمنع انضمام طلاب جدد
+  isLocked: int("isLocked").default(0).notNull(),
   // وقت الانتهاء (ملليثاني epoch) - null = بلا حد زمني
   endsAt: timestamp("endsAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

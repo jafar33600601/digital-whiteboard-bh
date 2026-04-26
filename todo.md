@@ -188,3 +188,10 @@
 
 ## إصلاح stale closure في submitText (2026-04-26)
 - [x] تحويل submitText إلى useRef لضمان حفظ النص دائماً بدون stale closure
+
+## ميزة فتح/إغلاق جلسة Quizizz (2026-04-26)
+- [x] إضافة حقل isLocked في جدول quizizzSessions في قاعدة البيانات
+- [x] إضافة procedure toggleSessionLock في routers.ts
+- [x] فحص isLocked عند انضمام الطالب (procedure joinSession)
+- [x] إضافة زر فتح/إغلاق الجلسة في QuizizzHost
+- [x] عرض رسالة "الجلسة مغلقة" للطالب عند محاولة الانضمام

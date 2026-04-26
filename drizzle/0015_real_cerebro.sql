@@ -1,0 +1,1 @@
+ALTER TABLE `quizizz_sessions` ADD `isLocked` int DEFAULT 0 NOT NULL;
