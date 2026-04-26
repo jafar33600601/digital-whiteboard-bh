@@ -237,3 +237,13 @@ export const quizizzProgress = mysqlTable("quizizz_progress", {
 
 export type QuizizzProgress = typeof quizizzProgress.$inferSelect;
 export type InsertQuizizzProgress = typeof quizizzProgress.$inferInsert;
+
+// جدول الطلاب المحظورين في Quizizz (يُضاف عند حذف الطالب)
+export const quizizzBanned = mysqlTable("quizizz_banned", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  studentName: varchar("studentName", { length: 100 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type QuizizzBanned = typeof quizizzBanned.$inferSelect;
+export type InsertQuizizzBanned = typeof quizizzBanned.$inferInsert;

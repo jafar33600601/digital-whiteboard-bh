@@ -67,6 +67,8 @@ import {
   getAllQuizizzProgress,
   deleteQuizizzSession,
   deleteQuizizzProgressById,
+  banQuizizzStudent,
+  isQuizizzStudentBanned,
 } from "./db";
 import { storagePut } from "./storage";
 
@@ -827,6 +829,9 @@ const quizizzRouter = router({
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "رمز الجلسة غير صحيح" });
       if (session.state === "ended") throw new TRPCError({ code: "BAD_REQUEST", message: "انتهت الجلسة" });
       if (session.isLocked === 1) throw new TRPCError({ code: "BAD_REQUEST", message: "الجلسة مغلقة حالياً. انتظر حتى يفتحها المعلم" });
+      // فحص الحظر قبل السماح بالانضمام
+      const studentBanned = await isQuizizzStudentBanned(session.id, input.studentName);
+      if (studentBanned) throw new TRPCError({ code: "FORBIDDEN", message: "تم إزالتك من الجلسة من قِبل المعلم" });
       const quiz = await getQuizById(session.quizId);
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
       const questions = await getQuestionsByQuiz(session.quizId);
@@ -845,6 +850,9 @@ const quizizzRouter = router({
     .mutation(async ({ input }) => {
       const session = await getQuizizzSessionById(input.sessionId);
       if (!session) throw new TRPCError({ code: "NOT_FOUND" });
+      // فحص الحظر قبل قبول الإجابة
+      const banned = await isQuizizzStudentBanned(input.sessionId, input.studentName);
+      if (banned) throw new TRPCError({ code: "FORBIDDEN", message: "تم إزالتك من الجلسة من قِبل المعلم" });
       const quiz = await getQuizById(session.quizId);
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
       const questions = await getQuestionsByQuiz(session.quizId);
@@ -898,15 +906,17 @@ const quizizzRouter = router({
       await updateQuizizzSession(input.sessionId, { state: "ended" });
       return { success: true };
     }),
-  // حذف طالب من جلسة Quizizz
+  // حذف طالب من جلسة Quizizz (مع حظره من العودة)
   removeStudent: protectedProcedure
-    .input(z.object({ sessionId: z.number(), progressId: z.number() }))
+    .input(z.object({ sessionId: z.number(), progressId: z.number(), studentName: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const session = await getQuizizzSessionById(input.sessionId);
       if (!session) throw new TRPCError({ code: "NOT_FOUND" });
       const quiz = await getQuizById(session.quizId);
       if (!quiz || quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      // حذف السجل وإضافته لقائمة المحظورين
       await deleteQuizizzProgressById(input.progressId);
+      await banQuizizzStudent(input.sessionId, input.studentName);
       return { success: true };
     }),
   // الطالب يتحقق من حالة الجلسة

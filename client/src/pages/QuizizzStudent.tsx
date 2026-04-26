@@ -49,6 +49,7 @@ export default function QuizizzStudent({ params }: { params?: { code?: string } 
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [phase, setPhase] = useState<"join" | "playing" | "finished">("join");
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [isBanned, setIsBanned] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -118,11 +119,21 @@ export default function QuizizzStudent({ params }: { params?: { code?: string } 
       }
     },
     onError: (err) => {
-      setJoinError(err.message);
+      if (err.data?.code === "FORBIDDEN" || err.message.includes("إزالتك")) {
+        setIsBanned(true);
+      } else {
+        setJoinError(err.message);
+      }
     }
   });
 
   const submitMut = trpc.quizizz.submitAnswer.useMutation({
+    onError: (err) => {
+      if (err.data?.code === "FORBIDDEN") {
+        setIsBanned(true);
+        stopMusic();
+      }
+    },
     onSuccess: (result) => {
       if (result.isCorrect) {
         setFeedback("correct");
@@ -185,6 +196,18 @@ export default function QuizizzStudent({ params }: { params?: { code?: string } 
   const currentQIndex = sessionData?.progress.currentQuestion ?? 0;
   const score = sessionData?.progress.score ?? 0;
 
+  // شاشة الحظر
+  if (isBanned) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-500 via-red-600 to-red-700 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md text-center">
+          <div className="text-6xl mb-4">🚫</div>
+          <h1 className="text-2xl font-bold text-red-700 mb-3">تم إزالتك من الجلسة</h1>
+          <p className="text-slate-500 text-sm">قام المعلم بإزالتك من هذه الجلسة. تواصل مع معلمك للمزيد من المعلومات.</p>
+        </div>
+      </div>
+    );
+  }
   // شاشة الانضمام
   if (phase === "join") {
     return (

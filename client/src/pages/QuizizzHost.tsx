@@ -336,7 +336,7 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
                     title="حذف الطالب"
                     onClick={() => {
                       if (confirm(`حذف ${student.studentName} من الجلسة؟`)) {
-                        removeStudentMut.mutate({ sessionId: sessionId!, progressId: student.id });
+                        removeStudentMut.mutate({ sessionId: sessionId!, progressId: student.id, studentName: student.studentName });
                       }
                     }}
                     className="text-red-400 hover:text-red-600 transition-colors p-1 rounded shrink-0 text-base"

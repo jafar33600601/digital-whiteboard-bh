@@ -195,3 +195,10 @@
 - [x] فحص isLocked عند انضمام الطالب (procedure joinSession)
 - [x] إضافة زر فتح/إغلاق الجلسة في QuizizzHost
 - [x] عرض رسالة "الجلسة مغلقة" للطالب عند محاولة الانضمام
+
+## إصلاح مشكلة عودة الطالب المحذوف في Quizizz (2026-04-26)
+- [x] إضافة جدول quizizzBanned (sessionId + studentName) في schema.ts وتطبيق migration
+- [x] تحديث procedure removeStudent ليُضيف الطالب لجدول المحظورين بدلاً من الحذف فقط
+- [x] تحديث procedure submitAnswer للتحقق من isBanned قبل قبول الإجابة
+- [x] تحديث procedure joinSession للتحقق من isBanned عند محاولة الانضمام مجدداً
+- [x] تحديث QuizizzStudent لعرض شاشة الحظر عند رفض الخادم

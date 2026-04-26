@@ -1,6 +1,6 @@
 import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, type InsertQuizizzSession, type InsertQuizizzProgress } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -534,4 +534,26 @@ export async function deleteQuizizzProgressById(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(quizizzProgress).where(eq(quizizzProgress.id, id));
+}
+export async function banQuizizzStudent(sessionId: number, studentName: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // تجنب التكرار
+  const [existing] = await db.select().from(quizizzBanned)
+    .where(and(eq(quizizzBanned.sessionId, sessionId), eq(quizizzBanned.studentName, studentName)));
+  if (!existing) {
+    await db.insert(quizizzBanned).values({ sessionId, studentName });
+  }
+}
+export async function isQuizizzStudentBanned(sessionId: number, studentName: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const [row] = await db.select().from(quizizzBanned)
+    .where(and(eq(quizizzBanned.sessionId, sessionId), eq(quizizzBanned.studentName, studentName)));
+  return !!row;
+}
+export async function deleteQuizizzBannedBySession(sessionId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(quizizzBanned).where(eq(quizizzBanned.sessionId, sessionId));
 }
