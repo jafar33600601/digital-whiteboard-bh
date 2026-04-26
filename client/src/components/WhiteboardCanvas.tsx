@@ -166,6 +166,10 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
     const [isDrawing, setIsDrawing] = useState(false);
     const [elements, setElements] = useState<CanvasElement[]>([]);
     const [currentPath, setCurrentPath] = useState<{ x: number; y: number }[]>([]);
+    // text drag-to-draw state
+    const textDragRef = useRef<{ startX: number; startY: number } | null>(null);
+    const textDragRectRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+    const [textDragRect, setTextDragRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
 
     // text input overlay state
     const [textInput, setTextInput] = useState<{
@@ -465,18 +469,16 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
       e.preventDefault();
       const pos = getPos(e, canvas);
 
-      // أداة النص: فتح مربع كتابة جديد
+      // أداة النص: بدء السحب لرسم مربع النص
       if (tool === "text") {
         // إذا كان هناك نص مفتوح، أغلقه أولاً
-        if (textInput.visible) return;
-        const fontSize = lineWidth * 6 + 10;
-        setTextInput({
-          id: null,
-          x: pos.x, y: pos.y,
-          width: DEFAULT_TEXT_W, height: 80,
-          visible: true, value: "",
-          color, fontSize,
-        });
+        if (textInput.visible) {
+          submitText();
+          return;
+        }
+        textDragRef.current = { startX: pos.x, startY: pos.y };
+        textDragRectRef.current = { x: pos.x, y: pos.y, w: 0, h: 0 };
+        setTextDragRect({ x: pos.x, y: pos.y, w: 0, h: 0 });
         return;
       }
 
@@ -578,6 +580,17 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
         return;
       }
 
+      // text drag: تحديث مستطيل السحب
+      if (tool === "text" && textDragRef.current) {
+        const { startX, startY } = textDragRef.current;
+        const x = Math.min(pos.x, startX);
+        const y = Math.min(pos.y, startY);
+        const w = Math.abs(pos.x - startX);
+        const h = Math.abs(pos.y - startY);
+        textDragRectRef.current = { x, y, w, h };
+        setTextDragRect({ x, y, w, h });
+        return;
+      }
       // draw path
       if (!isDrawing || (tool !== "pen" && tool !== "eraser")) return;
       const newPath = [...currentPath, pos];
@@ -606,6 +619,30 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
         setElements(prev => { notifyChange(prev); return prev; });
         return;
       }
+      // text drag: فتح مربع النص عند الإفلات
+      if (tool === "text" && textDragRef.current) {
+        const drag = textDragRef.current;
+        const rect = textDragRectRef.current;
+        textDragRef.current = null;
+        textDragRectRef.current = null;
+        setTextDragRect(null);
+        const fontSize = lineWidth * 6 + 10;
+        const rawW = rect?.w ?? 0;
+        const rawH = rect?.h ?? 0;
+        const finalX = rect?.x ?? drag.startX;
+        const finalY = rect?.y ?? drag.startY;
+        // إذا سحب المستخدم مسافة كافية استخدم الحجم المرسوم، وإلا استخدم الحجم الافتراضي
+        const finalW = rawW > 40 ? rawW : DEFAULT_TEXT_W;
+        const finalH = rawH > 30 ? rawH : 80;
+        setTextInput({
+          id: null,
+          x: finalX, y: finalY,
+          width: finalW, height: finalH,
+          visible: true, value: "",
+          color, fontSize,
+        });
+        return;
+      }
       if (!isDrawing || (tool !== "pen" && tool !== "eraser")) return;
       setIsDrawing(false);
       if (currentPath.length < 2) { setCurrentPath([]); return; }
@@ -625,6 +662,7 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
     // ── text submit ──────────────────────────────────────────────────────────
     const submitText = useCallback(() => {
       if (!textInput.value.trim()) {
+        // لا نحذف المربع إذا لم يكتب المستخدم — فقط أغلق الـ overlay بدون حفظ
         setTextInput(t => ({ ...t, visible: false }));
         return;
       }
@@ -927,6 +965,21 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
             onTouchEnd={stopDrawing}
           />
 
+          {/* ── text drag preview rect ── */}
+          {textDragRect && textDragRect.w > 5 && textDragRect.h > 5 && (
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                left: `${(textDragRect.x / CANVAS_W) * 100}%`,
+                top: `${(textDragRect.y / CANVAS_H) * 100}%`,
+                width: `${(textDragRect.w / CANVAS_W) * 100}%`,
+                height: `${(textDragRect.h / CANVAS_H) * 100}%`,
+                border: "2px dashed #22c55e",
+                borderRadius: "4px",
+                background: "rgba(34,197,94,0.06)",
+              }}
+            />
+          )}
           {/* ── text input overlay ── */}
           {textInput.visible && (
             <div
@@ -943,10 +996,15 @@ const WhiteboardCanvas = forwardRef<WhiteboardCanvasRef, WhiteboardCanvasProps>(
                 value={textInput.value}
                 onChange={e => setTextInput(t => ({ ...t, value: e.target.value }))}
                 onKeyDown={e => {
-                  if (e.key === "Escape") setTextInput(t => ({ ...t, visible: false }));
+                  if (e.key === "Escape") { setTextInput(t => ({ ...t, visible: false })); e.preventDefault(); }
                   if (e.key === "Enter" && e.ctrlKey) submitText();
                 }}
-                onBlur={submitText}
+                onBlur={e => {
+                  // إذا كان النص فارغاً لا نغلق المربع تلقائياً — فقط عند الضغط على خارج السبورة أو Escape
+                  if (textInput.value.trim()) submitText();
+                  // إذا فارغ: أعد التركيز فوراً لإبقاء المربع مفتوحاً
+                  else { const t = e.currentTarget; setTimeout(() => t.focus(), 0); }
+                }}
                 className="w-full h-full border-2 border-green-500 rounded px-2 py-1 bg-white/95 shadow-lg outline-none resize"
                 style={{
                   color: textInput.color,
