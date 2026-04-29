@@ -69,6 +69,18 @@ import {
   deleteQuizizzProgressById,
   banQuizizzStudent,
   isQuizizzStudentBanned,
+  getClassroomsByUser,
+  createClassroom,
+  deleteClassroom,
+  updateClassroomName,
+  getStudentsByClassroom,
+  getWheelQuestionsByUser,
+  addStudentsToClassroom,
+  deleteStudentFromClassroom,
+  replaceStudentsInClassroom,
+  createWheelQuestion,
+  deleteWheelQuestion,
+  updateWheelQuestion,
 } from "./db";
 import { storagePut } from "./storage";
 
@@ -940,8 +952,90 @@ const quizizzRouter = router({
       return { isLocked: newLocked === 1 };
     }),
 });
-
-
+// ===== Wheel Router =====
+const wheelRouter = router({
+  // --- الصفوف الدراسية ---
+  getClassrooms: protectedProcedure
+    .query(async ({ ctx }) => {
+      const classrooms = await getClassroomsByUser(ctx.user.id);
+      const result = await Promise.all(
+        classrooms.map(async (classroom) => {
+          const students = await getStudentsByClassroom(classroom.id);
+          return { ...classroom, students };
+        })
+      );
+      return result;
+    }),
+  createClassroom: protectedProcedure
+    .input(z.object({ name: z.string().min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createClassroom(ctx.user.id, input.name);
+      return { id };
+    }),
+  deleteClassroom: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteClassroom(input.id, ctx.user.id);
+      return { success: true };
+    }),
+  updateClassroomName: protectedProcedure
+    .input(z.object({ id: z.number(), name: z.string().min(1).max(100) }))
+    .mutation(async ({ ctx, input }) => {
+      await updateClassroomName(input.id, ctx.user.id, input.name);
+      return { success: true };
+    }),
+  // --- طلاب الصف ---
+  getStudents: protectedProcedure
+    .input(z.object({ classroomId: z.number() }))
+    .query(async ({ input }) => {
+      return getStudentsByClassroom(input.classroomId);
+    }),
+  addStudents: protectedProcedure
+    .input(z.object({ classroomId: z.number(), names: z.array(z.string().min(1).max(100)).min(1).max(500) }))
+    .mutation(async ({ input }) => {
+      await addStudentsToClassroom(input.classroomId, input.names);
+      return { success: true };
+    }),
+  replaceStudents: protectedProcedure
+    .input(z.object({ classroomId: z.number(), names: z.array(z.string().min(1).max(100)).max(500) }))
+    .mutation(async ({ input }) => {
+      await replaceStudentsInClassroom(input.classroomId, input.names);
+      return { success: true };
+    }),
+  deleteStudent: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await deleteStudentFromClassroom(input.id);
+      return { success: true };
+    }),
+  // --- أسئلة العجلة ---
+  getQuestions: protectedProcedure
+    .query(async ({ ctx }) => {
+      const questions = await getWheelQuestionsByUser(ctx.user.id);
+      return questions.map((q) => ({
+        ...q,
+        options: q.options ? JSON.parse(q.options) : [],
+      }));
+    }),
+  createQuestion: protectedProcedure
+    .input(z.object({ question: z.string().min(1).max(500), options: z.array(z.string().max(200)).max(10) }))
+    .mutation(async ({ ctx, input }) => {
+      const id = await createWheelQuestion(ctx.user.id, input.question, input.options);
+      return { id };
+    }),
+  updateQuestion: protectedProcedure
+    .input(z.object({ id: z.number(), question: z.string().min(1).max(500), options: z.array(z.string().max(200)).max(10) }))
+    .mutation(async ({ ctx, input }) => {
+      await updateWheelQuestion(input.id, ctx.user.id, input.question, input.options);
+      return { success: true };
+    }),
+  deleteQuestion: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteWheelQuestion(input.id, ctx.user.id);
+      return { success: true };
+    }),
+});
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -1211,6 +1305,6 @@ export const appRouter = router({
   }),
   padlet: padletRouter,
   quizizz: quizizzRouter,
+  wheel: wheelRouter,
 });
-// ===== Padlet Router =====
 export type AppRouter = typeof appRouter;

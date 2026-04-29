@@ -202,3 +202,21 @@
 - [x] تحديث procedure submitAnswer للتحقق من isBanned قبل قبول الإجابة
 - [x] تحديث procedure joinSession للتحقق من isBanned عند محاولة الانضمام مجدداً
 - [x] تحديث QuizizzStudent لعرض شاشة الحظر عند رفض الخادم
+
+## قسم عجلة الأسماء (2026-04-29)
+- [x] إضافة جدول classrooms (id, userId, name, createdAt) في schema.ts
+- [x] إضافة جدول classroomStudents (id, classroomId, name) في schema.ts
+- [x] إضافة جدول wheelQuestions (id, userId, question, options JSON) في schema.ts
+- [x] تطبيق migration SQL للجداول الثلاثة
+- [x] إضافة دوال db.ts للصفوف والطلاب والأسئلة
+- [x] إضافة procedures في routers.ts (CRUD للصفوف والطلاب والأسئلة)
+- [x] بناء صفحة SpinnerWheel.tsx مع عجلة دوارة Canvas
+- [x] قائمة منسدلة لاختيار الصف وعرض الطلاب على العجلة
+- [x] زر "أدِّر العجلة" مع تأثير دوران وإظهار الطالب المختار
+- [x] قائمة منسدلة لاختيار السؤال وعرضه بجانب العجلة
+- [x] إدارة الصفوف: إضافة/حذف صف، إضافة أسماء بالنسخ واللصق
+- [x] إدارة الأسئلة: إضافة/حذف سؤال مع خيارات اختيارية
+- [x] تسجيل المسار في App.tsx وإضافة رابط في الصفحة الرئيسية
+
+## الحفظ والتسليم
+- [ ] حفظ checkpoint نهائي وتسليم المشروع

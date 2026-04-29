@@ -327,6 +327,15 @@ export default function Home() {
                 </svg>
                 لوحة بادلت
               </button>
+              <a
+                href="/spinner-wheel"
+                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-l from-orange-600 to-red-600 text-white font-bold rounded-xl hover:opacity-90 transition-all hover:shadow-lg hover:shadow-orange-200 text-sm"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+                </svg>
+                عجلة الأسماء
+              </a>
             </div>
           </div>
 

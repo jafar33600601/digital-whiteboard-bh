@@ -18,6 +18,7 @@ import PadletBoard from "./pages/PadletBoard";
 import PadletStudent from "./pages/PadletStudent";
 import QuizizzHost from "./pages/QuizizzHost";
 import QuizizzStudent from "./pages/QuizizzStudent";
+import SpinnerWheel from "./pages/SpinnerWheel";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
@@ -142,6 +143,7 @@ function Router() {
       <Route path="/padlet/:id" component={PadletBoardRoute} />
       <Route path="/padlet-join" component={() => <PadletStudent />} />
       <Route path="/padlet-join/:code" component={PadletStudentJoinRoute} />
+      <Route path="/spinner-wheel" component={() => <SpinnerWheel />} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

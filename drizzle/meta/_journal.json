@@ -120,6 +120,20 @@
       "when": 1777210594087,
       "tag": "0016_milky_raza",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1777473855677,
+      "tag": "0017_heavy_shockwave",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1777480140979,
+      "tag": "0018_premium_quasar",
+      "breakpoints": true
     }
   ]
 }

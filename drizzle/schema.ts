@@ -247,3 +247,41 @@ export const quizizzBanned = mysqlTable("quizizz_banned", {
 });
 export type QuizizzBanned = typeof quizizzBanned.$inferSelect;
 export type InsertQuizizzBanned = typeof quizizzBanned.$inferInsert;
+
+// ============================================================
+// قسم عجلة الأسماء
+// ============================================================
+
+// جدول الصفوف الدراسية
+export const classrooms = mysqlTable("classrooms", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Classroom = typeof classrooms.$inferSelect;
+export type InsertClassroom = typeof classrooms.$inferInsert;
+
+// جدول طلاب الصف
+export const classroomStudents = mysqlTable("classroom_students", {
+  id: int("id").autoincrement().primaryKey(),
+  classroomId: int("classroomId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ClassroomStudent = typeof classroomStudents.$inferSelect;
+export type InsertClassroomStudent = typeof classroomStudents.$inferInsert;
+
+// جدول أسئلة العجلة
+export const wheelQuestions = mysqlTable("wheel_questions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  question: varchar("question", { length: 500 }).notNull(),
+  // JSON array of strings e.g. ["خيار 1","خيار 2"] — فارغ = سؤال عادي
+  options: longtext("options").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type WheelQuestion = typeof wheelQuestions.$inferSelect;
+export type InsertWheelQuestion = typeof wheelQuestions.$inferInsert;

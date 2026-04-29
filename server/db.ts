@@ -1,6 +1,6 @@
 import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress, classrooms, classroomStudents, wheelQuestions, type InsertClassroom, type InsertClassroomStudent, type InsertWheelQuestion } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -556,4 +556,81 @@ export async function deleteQuizizzBannedBySession(sessionId: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(quizizzBanned).where(eq(quizizzBanned.sessionId, sessionId));
+}
+
+// ============================================================
+// دوال عجلة الأسماء
+// ============================================================
+
+// --- الصفوف الدراسية ---
+export async function getClassroomsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(classrooms).where(eq(classrooms.userId, userId)).orderBy(desc(classrooms.createdAt));
+}
+export async function createClassroom(userId: number, name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(classrooms).values({ userId, name });
+  return result.insertId as number;
+}
+export async function deleteClassroom(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(classroomStudents).where(eq(classroomStudents.classroomId, id));
+  await db.delete(classrooms).where(and(eq(classrooms.id, id), eq(classrooms.userId, userId)));
+}
+export async function updateClassroomName(id: number, userId: number, name: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(classrooms).set({ name }).where(and(eq(classrooms.id, id), eq(classrooms.userId, userId)));
+}
+
+// --- طلاب الصف ---
+export async function getStudentsByClassroom(classroomId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(classroomStudents).where(eq(classroomStudents.classroomId, classroomId)).orderBy(classroomStudents.name);
+}
+export async function addStudentsToClassroom(classroomId: number, names: string[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (names.length === 0) return;
+  await db.insert(classroomStudents).values(names.map(name => ({ classroomId, name })));
+}
+export async function deleteStudentFromClassroom(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(classroomStudents).where(eq(classroomStudents.id, id));
+}
+export async function replaceStudentsInClassroom(classroomId: number, names: string[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(classroomStudents).where(eq(classroomStudents.classroomId, classroomId));
+  if (names.length > 0) {
+    await db.insert(classroomStudents).values(names.map(name => ({ classroomId, name })));
+  }
+}
+
+// --- أسئلة العجلة ---
+export async function getWheelQuestionsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(wheelQuestions).where(eq(wheelQuestions.userId, userId)).orderBy(desc(wheelQuestions.createdAt));
+}
+export async function createWheelQuestion(userId: number, question: string, options: string[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(wheelQuestions).values({ userId, question, options: JSON.stringify(options) });
+  return result.insertId as number;
+}
+export async function deleteWheelQuestion(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(wheelQuestions).where(and(eq(wheelQuestions.id, id), eq(wheelQuestions.userId, userId)));
+}
+export async function updateWheelQuestion(id: number, userId: number, question: string, options: string[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(wheelQuestions).set({ question, options: JSON.stringify(options) }).where(and(eq(wheelQuestions.id, id), eq(wheelQuestions.userId, userId)));
 }
