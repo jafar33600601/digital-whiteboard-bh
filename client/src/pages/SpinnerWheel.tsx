@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,9 @@ export default function SpinnerWheel() {
   // العجلة
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // Mutations
   const createClassroomMut = trpc.wheel.createClassroom.useMutation({
@@ -67,15 +70,142 @@ export default function SpinnerWheel() {
   const selectedClassroom = classroomsQuery.data?.find((c) => c.id === selectedClassroomId);
   const students = selectedClassroom?.students || [];
 
+  // دالة تشغيل الصوت
+  const playTickSound = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioContextRef.current;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.05);
+  };
+
+  const playWinSound = () => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioContextRef.current;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(1000, ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.2);
+  };
+
+  // دالة رسم المستطيل
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const itemHeight = 60;
+    const itemWidth = 150;
+
+    // رسم الخلفية
+    ctx.fillStyle = "#f3f4f6";
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "#9333ea";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 0, width, height);
+
+    // رسم الخط الأوسط (المؤشر)
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(width - 40, 0);
+    ctx.lineTo(width - 40, height);
+    ctx.stroke();
+
+    // رسم الأسماء
+    ctx.fillStyle = "#1f2937";
+    ctx.font = "bold 18px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const repeatedNames = [...students, ...students, ...students];
+    repeatedNames.forEach((student, idx) => {
+      const x = (idx * itemWidth - scrollOffset) % (repeatedNames.length * itemWidth);
+      if (x > -itemWidth && x < width) {
+        ctx.fillStyle = x > width - 80 && x < width - 40 ? "#7c3aed" : "#1f2937";
+        ctx.fillRect(x, height / 2 - itemHeight / 2, itemWidth, itemHeight);
+        ctx.fillStyle = "white";
+        ctx.fillText(student.name, x + itemWidth / 2, height / 2);
+      }
+    });
+  }, [scrollOffset, students]);
+
   // دالة تدوير العجلة
   const spinWheel = () => {
     if (students.length === 0) return;
     setIsSpinning(true);
-    setTimeout(() => {
-      const randomIndex = Math.floor(Math.random() * students.length);
-      setSelectedStudent(students[randomIndex].name);
-      setIsSpinning(false);
-    }, 2000);
+    setScrollOffset(0);
+    setSelectedStudent(null);
+
+    const itemWidth = 150;
+    const randomIndex = Math.floor(Math.random() * students.length);
+    const finalOffset = randomIndex * itemWidth;
+
+    let currentOffset = 0;
+    let speed = 10;
+    const maxSpeed = 100;
+    const startTime = Date.now();
+    const spinDuration = 3000;
+    let lastTickTime = 0;
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / spinDuration, 1);
+
+      if (progress < 0.6) {
+        // مرحلة التسارع: من 10 إلى 100
+        speed = 10 + (maxSpeed - 10) * (progress / 0.6);
+        currentOffset += speed;
+        
+        // تشغيل الصوت كل 50ms
+        if (elapsed - lastTickTime > 50) {
+          playTickSound();
+          lastTickTime = elapsed;
+        }
+      } else {
+        // مرحلة التباطؤ: من 100 إلى 0
+        const easeProgress = (progress - 0.6) / 0.4;
+        speed = maxSpeed * (1 - easeProgress * easeProgress);
+        currentOffset += speed;
+        
+        // تشغيل الصوت كل 50ms
+        if (elapsed - lastTickTime > 50) {
+          playTickSound();
+          lastTickTime = elapsed;
+        }
+      }
+
+      setScrollOffset(currentOffset);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        setSelectedStudent(students[randomIndex].name);
+        playWinSound();
+        setIsSpinning(false);
+      }
+    };
+
+    animate();
   };
 
   // الحصول على السؤال المختار
@@ -173,17 +303,19 @@ export default function SpinnerWheel() {
                 </div>
               ) : (
                 <>
-                  <div className="bg-gradient-to-br from-purple-400 to-blue-500 rounded-full w-48 h-48 mx-auto flex items-center justify-center shadow-lg">
-                    <div className="text-center">
-                      {selectedStudent ? (
-                        <div>
-                          <p className="text-white text-sm mb-2">الطالب المختار</p>
-                          <p className="text-white text-2xl font-bold">{selectedStudent}</p>
-                        </div>
-                      ) : (
-                        <p className="text-white text-sm">اضغط أدِّر العجلة</p>
-                      )}
-                    </div>
+                  <div className="space-y-4">
+                    <canvas
+                      ref={canvasRef}
+                      width={400}
+                      height={100}
+                      className="w-full border-2 border-purple-500 rounded-lg shadow-lg"
+                    />
+                    {selectedStudent && (
+                      <div className="bg-gradient-to-r from-purple-500 to-blue-500 p-4 rounded-lg text-center">
+                        <p className="text-white text-sm mb-2">الطالب المختار 🎉</p>
+                        <p className="text-white text-3xl font-bold">{selectedStudent}</p>
+                      </div>
+                    )}
                   </div>
 
                   <Button
