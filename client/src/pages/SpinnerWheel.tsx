@@ -113,8 +113,8 @@ export default function SpinnerWheel() {
 
     const width = canvas.width;
     const height = canvas.height;
-    const itemHeight = 100;
-    const itemWidth = 250;
+    const itemHeight = 140;
+    const itemWidth = 380;
 
     // رسم الخلفية
     ctx.fillStyle = "#f3f4f6";
@@ -133,7 +133,7 @@ export default function SpinnerWheel() {
 
     // رسم الأسماء
     ctx.fillStyle = "#1f2937";
-    ctx.font = "bold 28px Arial";
+    ctx.font = "bold 48px 'Segoe UI', Tahoma, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -141,9 +141,16 @@ export default function SpinnerWheel() {
     repeatedNames.forEach((student, idx) => {
       const x = (idx * itemWidth - scrollOffset) % (repeatedNames.length * itemWidth);
       if (x > -itemWidth && x < width) {
-        ctx.fillStyle = x > width / 2 - 30 && x < width / 2 + 30 ? "#7c3aed" : "#1f2937";
+        // تحديد اللون: أرجواني للاسم المختار، أزرق للآخرين
+        const isSelected = x > width / 2 - 40 && x < width / 2 + 40;
+        ctx.fillStyle = isSelected ? "#7c3aed" : "#3b82f6";
         ctx.fillRect(x, height / 2 - itemHeight / 2, itemWidth, itemHeight);
+        
+        // رسم النص
         ctx.fillStyle = "white";
+        ctx.font = "bold 48px 'Segoe UI', Tahoma, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
         ctx.fillText(student.name, x + itemWidth / 2, height / 2);
       }
     });
@@ -156,9 +163,10 @@ export default function SpinnerWheel() {
     setScrollOffset(0);
     setSelectedStudent(null);
 
-    const itemWidth = 250;
+    const itemWidth = 380;
     const randomIndex = Math.floor(Math.random() * students.length);
-    const finalOffset = randomIndex * itemWidth + itemWidth / 2 - 400;
+    const canvasWidth = canvasRef.current?.width || 1200;
+    const finalOffset = randomIndex * itemWidth + itemWidth / 2 - canvasWidth / 2;
 
     let currentOffset = 0;
     let speed = 10;
@@ -307,9 +315,9 @@ export default function SpinnerWheel() {
                   <div className="space-y-4">
                     <canvas
                       ref={canvasRef}
-                      width={800}
-                      height={150}
-                      className="w-full border-2 border-purple-500 rounded-lg shadow-lg"
+                      width={1200}
+                      height={200}
+                      className="w-full border-4 border-purple-500 rounded-lg shadow-2xl"
                     />
                     {selectedStudent && (
                       <div className="bg-gradient-to-r from-purple-500 to-blue-500 p-4 rounded-lg text-center">
