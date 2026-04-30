@@ -1,0 +1,1 @@
+ALTER TABLE `wheel_questions` ADD `correctAnswer` int;

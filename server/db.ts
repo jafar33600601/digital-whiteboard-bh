@@ -618,10 +618,15 @@ export async function getWheelQuestionsByUser(userId: number) {
   if (!db) return [];
   return db.select().from(wheelQuestions).where(eq(wheelQuestions.userId, userId)).orderBy(desc(wheelQuestions.createdAt));
 }
-export async function createWheelQuestion(userId: number, question: string, options: string[]) {
+export async function createWheelQuestion(userId: number, question: string, options: string[], correctAnswer?: number | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const [result] = await db.insert(wheelQuestions).values({ userId, question, options: JSON.stringify(options) });
+  const [result] = await db.insert(wheelQuestions).values({
+    userId,
+    question,
+    options: JSON.stringify(options),
+    correctAnswer: correctAnswer ?? null,
+  });
   return result.insertId as number;
 }
 export async function deleteWheelQuestion(id: number, userId: number) {
@@ -629,8 +634,12 @@ export async function deleteWheelQuestion(id: number, userId: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(wheelQuestions).where(and(eq(wheelQuestions.id, id), eq(wheelQuestions.userId, userId)));
 }
-export async function updateWheelQuestion(id: number, userId: number, question: string, options: string[]) {
+export async function updateWheelQuestion(id: number, userId: number, question: string, options: string[], correctAnswer?: number | null) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  await db.update(wheelQuestions).set({ question, options: JSON.stringify(options) }).where(and(eq(wheelQuestions.id, id), eq(wheelQuestions.userId, userId)));
+  await db.update(wheelQuestions).set({
+    question,
+    options: JSON.stringify(options),
+    correctAnswer: correctAnswer ?? null,
+  }).where(and(eq(wheelQuestions.id, id), eq(wheelQuestions.userId, userId)));
 }

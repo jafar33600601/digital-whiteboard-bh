@@ -278,8 +278,10 @@ export const wheelQuestions = mysqlTable("wheel_questions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   question: varchar("question", { length: 500 }).notNull(),
-  // JSON array of strings e.g. ["خيار 1","خيار 2"] — فارغ = سؤال عادي
+  // JSON array of strings e.g. ["\u062e\u064a\u0627\u0631 1","\u062e\u064a\u0627\u0631 2"] \u2014 \u0641\u0627\u0631\u063a = \u0633\u0624\u0627\u0644 \u0639\u0627\u062f\u064a
   options: longtext("options").notNull(),
+  // index 0-3 for correct answer, null = open question
+  correctAnswer: int("correctAnswer"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

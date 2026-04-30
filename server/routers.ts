@@ -1015,18 +1015,28 @@ const wheelRouter = router({
       return questions.map((q) => ({
         ...q,
         options: q.options ? JSON.parse(q.options) : [],
+        correctAnswer: q.correctAnswer ?? null,
       }));
     }),
   createQuestion: protectedProcedure
-    .input(z.object({ question: z.string().min(1).max(500), options: z.array(z.string().max(200)).max(10) }))
+    .input(z.object({
+      question: z.string().min(1).max(500),
+      options: z.array(z.string().max(200)).max(10),
+      correctAnswer: z.number().nullable().optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
-      const id = await createWheelQuestion(ctx.user.id, input.question, input.options);
+      const id = await createWheelQuestion(ctx.user.id, input.question, input.options, input.correctAnswer ?? null);
       return { id };
     }),
   updateQuestion: protectedProcedure
-    .input(z.object({ id: z.number(), question: z.string().min(1).max(500), options: z.array(z.string().max(200)).max(10) }))
+    .input(z.object({
+      id: z.number(),
+      question: z.string().min(1).max(500),
+      options: z.array(z.string().max(200)).max(10),
+      correctAnswer: z.number().nullable().optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
-      await updateWheelQuestion(input.id, ctx.user.id, input.question, input.options);
+      await updateWheelQuestion(input.id, ctx.user.id, input.question, input.options, input.correctAnswer ?? null);
       return { success: true };
     }),
   deleteQuestion: protectedProcedure
