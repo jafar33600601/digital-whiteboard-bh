@@ -113,8 +113,8 @@ export default function SpinnerWheel() {
 
     const width = canvas.width;
     const height = canvas.height;
-    const itemHeight = 60;
-    const itemWidth = 150;
+    const itemHeight = 100;
+    const itemWidth = 250;
 
     // رسم الخلفية
     ctx.fillStyle = "#f3f4f6";
@@ -127,13 +127,13 @@ export default function SpinnerWheel() {
     ctx.strokeStyle = "#ef4444";
     ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(width - 40, 0);
-    ctx.lineTo(width - 40, height);
+    ctx.moveTo(width / 2, 0);
+    ctx.lineTo(width / 2, height);
     ctx.stroke();
 
     // رسم الأسماء
     ctx.fillStyle = "#1f2937";
-    ctx.font = "bold 18px Arial";
+    ctx.font = "bold 28px Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -141,7 +141,7 @@ export default function SpinnerWheel() {
     repeatedNames.forEach((student, idx) => {
       const x = (idx * itemWidth - scrollOffset) % (repeatedNames.length * itemWidth);
       if (x > -itemWidth && x < width) {
-        ctx.fillStyle = x > width - 80 && x < width - 40 ? "#7c3aed" : "#1f2937";
+        ctx.fillStyle = x > width / 2 - 30 && x < width / 2 + 30 ? "#7c3aed" : "#1f2937";
         ctx.fillRect(x, height / 2 - itemHeight / 2, itemWidth, itemHeight);
         ctx.fillStyle = "white";
         ctx.fillText(student.name, x + itemWidth / 2, height / 2);
@@ -156,9 +156,9 @@ export default function SpinnerWheel() {
     setScrollOffset(0);
     setSelectedStudent(null);
 
-    const itemWidth = 150;
+    const itemWidth = 250;
     const randomIndex = Math.floor(Math.random() * students.length);
-    const finalOffset = randomIndex * itemWidth;
+    const finalOffset = randomIndex * itemWidth + itemWidth / 2 - 400;
 
     let currentOffset = 0;
     let speed = 10;
@@ -199,6 +199,7 @@ export default function SpinnerWheel() {
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
+        setScrollOffset(finalOffset);
         setSelectedStudent(students[randomIndex].name);
         playWinSound();
         setIsSpinning(false);
@@ -306,8 +307,8 @@ export default function SpinnerWheel() {
                   <div className="space-y-4">
                     <canvas
                       ref={canvasRef}
-                      width={400}
-                      height={100}
+                      width={800}
+                      height={150}
                       className="w-full border-2 border-purple-500 rounded-lg shadow-lg"
                     />
                     {selectedStudent && (
