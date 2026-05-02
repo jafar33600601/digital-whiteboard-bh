@@ -329,6 +329,8 @@ export default function Home() {
               </button>
               <a
                 href="/spinner-wheel"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-l from-orange-600 to-red-600 text-white font-bold rounded-xl hover:opacity-90 transition-all hover:shadow-lg hover:shadow-orange-200 text-sm"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -559,7 +561,7 @@ export default function Home() {
 
                   <div className="p-4 flex gap-2">
                     <button
-                      onClick={() => navigate(`/teacher/${session.id}`)}
+                      onClick={() => window.open(`/teacher/${session.id}`, '_blank')}
                       className="flex-1 py-2 bg-indigo-50 text-indigo-700 font-semibold rounded-lg text-sm hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -645,7 +647,7 @@ export default function Home() {
                       </div>
                       <div className="p-4 flex gap-2">
                         <button
-                          onClick={() => navigate(`/quiz-builder/${quiz.id}`)}
+                          onClick={() => window.open(`/quiz-builder/${quiz.id}`, '_blank')}
                           className="flex-1 py-2 bg-emerald-50 text-emerald-700 font-semibold rounded-lg text-sm hover:bg-emerald-100 transition-colors flex items-center justify-center gap-1"
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -730,7 +732,7 @@ export default function Home() {
                       </div>
                       <div className="px-4 pb-4 flex gap-2">
                         <button
-                          onClick={() => navigate(`/padlet/${board.id}`)}
+                          onClick={() => window.open(`/padlet/${board.id}`, '_blank')}
                           className="flex-1 py-2 bg-violet-50 text-violet-700 font-semibold rounded-lg text-sm hover:bg-violet-100 transition-colors flex items-center justify-center gap-1"
                         >
                           فتح اللوحة
