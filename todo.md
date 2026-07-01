@@ -297,5 +297,5 @@
 - [x] إضافة procedure sendVerificationCode: يُرسل رمز 6 أرقام للإيميل
 - [x] إضافة procedure verifyEmail: يتحقق من الرمز ويُفعّل الحساب
 - [x] تعديل صفحة LocalRegister.tsx: بعد التسجيل تظهر خطوة إدخال الرمز
-- [ ] إضافة RESEND_API_KEY في البيئة
-- [ ] رفع التحديثات إلى GitHub
+- [x] إضافة RESEND_API_KEY في البيئة
+- [x] رفع التحديثات إلى GitHub
