@@ -16,11 +16,10 @@ export default function LocalLogin() {
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: (data) => {
       toast.success(`مرحباً ${data.name}!`);
-      // إعادة تحميل الصفحة الرئيسية بعد تسجيل الدخول
-      // الـ cookie يُضبط تلقائياً من السيرفر
-      utils.localAuth.me.invalidate().then(() => {
+      // انتظر لحظة حتى يُحفظ الـ cookie ثم انتقل
+      setTimeout(() => {
         window.location.href = "/";
-      });
+      }, 100);
     },
     onError: (err) => {
       toast.error(err.message || "البريد الإلكتروني أو كلمة المرور غير صحيحة");

@@ -49,7 +49,7 @@ export function useLocalAuth() {
 
   return {
     user: meQuery.data ?? null,
-    loading: meQuery.isLoading,
+    loading: meQuery.isPending || meQuery.isFetching,
     isAuthenticated: Boolean(meQuery.data),
     login: loginMutation.mutateAsync,
     loginLoading: loginMutation.isPending,
