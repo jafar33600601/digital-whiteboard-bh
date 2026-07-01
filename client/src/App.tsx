@@ -23,7 +23,6 @@ import LocalLogin from "./pages/LocalLogin";
 import LocalRegister from "./pages/LocalRegister";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocalAuth } from "./hooks/useLocalAuth";
-import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 
 // الموقع يستخدم نظام تسجيل الدخول المحلي دائماً (local auth only)
@@ -52,7 +51,7 @@ function TeacherBoardRoute() {
     );
   }
   if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
+    window.location.href = '/login';
     return null;
   }
   return (
@@ -75,7 +74,7 @@ function TeacherDashboardRoute() {
     );
   }
   if (!isAuthenticated) {
-    window.location.href = getLoginUrl();
+    window.location.href = '/login';
     return null;
   }
   return (
@@ -88,14 +87,14 @@ function QuizBuilderRoute({ params }: { params?: { id?: string } }) {
   if (IS_LOCAL_AUTH) return <LocalProtectedRoute><QuizBuilder params={params} /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
-  if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
+  if (!isAuthenticated) { window.location.href = '/login'; return null; }
   return <QuizBuilder params={params} />;
 }
 function QuizResultsRoute({ params }: { params?: { id?: string } }) {
   if (IS_LOCAL_AUTH) return <LocalProtectedRoute><QuizResults params={params} /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
-  if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
+  if (!isAuthenticated) { window.location.href = '/login'; return null; }
   return <QuizResults params={params} />;
 }
 function LiveQuizHostRoute({ params }: { params?: { id?: string } }) {
@@ -103,7 +102,7 @@ function LiveQuizHostRoute({ params }: { params?: { id?: string } }) {
   if (IS_LOCAL_AUTH) return <LocalProtectedRoute><LiveQuizHost quizId={quizId} /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
-  if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
+  if (!isAuthenticated) { window.location.href = '/login'; return null; }
   return <LiveQuizHost quizId={quizId} />;
 }
 function LiveQuizResultsRoute({ params }: { params?: { id?: string } }) {
@@ -111,7 +110,7 @@ function LiveQuizResultsRoute({ params }: { params?: { id?: string } }) {
   if (IS_LOCAL_AUTH) return <LocalProtectedRoute><LiveQuizResults quizId={quizId} /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
-  if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
+  if (!isAuthenticated) { window.location.href = '/login'; return null; }
   return <LiveQuizResults quizId={quizId} />;
 }
 
@@ -134,7 +133,7 @@ function PadletBoardRoute({ params }: { params?: { id?: string } }) {
   if (IS_LOCAL_AUTH) return <LocalProtectedRoute><PadletBoard /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full" /></div>;
-  if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
+  if (!isAuthenticated) { window.location.href = '/login'; return null; }
   return <PadletBoard />;
 }
 
