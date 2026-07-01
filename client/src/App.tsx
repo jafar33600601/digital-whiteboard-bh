@@ -26,8 +26,8 @@ import { useLocalAuth } from "./hooks/useLocalAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 
-// إذا كان VITE_AUTH_MODE=local أو لم يكن هناك VITE_OAUTH_PORTAL_URL → نستخدم نظام تسجيل الدخول المحلي
-const IS_LOCAL_AUTH = import.meta.env.VITE_AUTH_MODE === "local" || !import.meta.env.VITE_OAUTH_PORTAL_URL;
+// الموقع يستخدم نظام تسجيل الدخول المحلي دائماً (local auth only)
+const IS_LOCAL_AUTH = true;
 
 // مكوّن حماية المسارات للنظام المحلي
 function LocalProtectedRoute({ children }: { children: React.ReactNode }) {

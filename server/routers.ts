@@ -1058,6 +1058,14 @@ const LOCAL_AUTH_COOKIE = "local_session";
 const getJwtSecret = () => new TextEncoder().encode(process.env.JWT_SECRET || "local-secret-key-change-in-production");
 const LOCAL_AUTH_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 const localAuthRouter = router({
+  // الحصول على نوع المصادقة من server-side (يتحقق من VITE_AUTH_MODE في environment)
+  getAuthMode: publicProcedure
+    .query(() => {
+      const authMode = process.env.VITE_AUTH_MODE;
+      const isLocal = authMode === "local";
+      return { isLocal };
+    }),
+
   // تسجيل حساب جديد
   register: publicProcedure
     .input(z.object({

@@ -6,7 +6,8 @@ import { useLocalAuth } from "@/hooks/useLocalAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
 
-const IS_LOCAL_AUTH = import.meta.env.VITE_AUTH_MODE === "local" || !import.meta.env.VITE_OAUTH_PORTAL_URL;
+// الموقع يستخدم نظام تسجيل الدخول المحلي دائماً
+const IS_LOCAL_AUTH = true;
 
 export default function Home() {
   const [, navigate] = useLocation();
