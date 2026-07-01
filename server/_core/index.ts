@@ -28,7 +28,33 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+// تشغيل migrations تلقائياً عند بدء التطبيق
+async function runMigrations() {
+  if (!process.env.DATABASE_URL) {
+    console.log("[Migration] No DATABASE_URL, skipping migrations");
+    return;
+  }
+  try {
+    const { drizzle } = await import("drizzle-orm/mysql2");
+    const { migrate } = await import("drizzle-orm/mysql2/migrator");
+    const path = await import("path");
+    const { fileURLToPath } = await import("url");
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const migrationsFolder = path.resolve(__dirname, "../../drizzle");
+    console.log("[Migration] Running migrations from:", migrationsFolder);
+    const db = drizzle(process.env.DATABASE_URL);
+    await migrate(db, { migrationsFolder });
+    console.log("[Migration] ✅ Migrations completed successfully");
+  } catch (error) {
+    console.error("[Migration] ❌ Migration failed:", error);
+    // لا نوقف التطبيق إذا فشل migration - نكمل بدونه
+  }
+}
+
 async function startServer() {
+  // تشغيل migrations أولاً
+  await runMigrations();
+
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
