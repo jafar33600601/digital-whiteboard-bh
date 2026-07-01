@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useLocalAuth } from "@/hooks/useLocalAuth";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +83,7 @@ export default function PadletBoard() {
   const { id } = useParams<{ id: string }>();
   const boardId = parseInt(id || "0");
   const [, navigate] = useLocation();
-  const { user } = useAuth();
+  const { user } = useLocalAuth();
 
   const [showAddCard, setShowAddCard] = useState(false);
   const [showSettings, setShowSettings] = useState(false);

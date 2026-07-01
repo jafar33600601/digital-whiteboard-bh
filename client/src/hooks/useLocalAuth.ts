@@ -1,26 +1,18 @@
 import { trpc } from "@/lib/trpc";
 import { useCallback } from "react";
 
-const LOCAL_TOKEN_KEY = "local_auth_token";
-
+// دوال مساعدة للـ cookie (للتوافق مع الكود القديم)
 export function getLocalToken(): string | null {
-  try {
-    return localStorage.getItem(LOCAL_TOKEN_KEY);
-  } catch {
-    return null;
-  }
+  // لم يعد مستخدماً - الـ cookie يُرسل تلقائياً
+  return null;
 }
 
-export function setLocalToken(token: string): void {
-  try {
-    localStorage.setItem(LOCAL_TOKEN_KEY, token);
-  } catch {}
+export function setLocalToken(_token: string): void {
+  // لم يعد مستخدماً - الـ cookie يُضبط من السيرفر
 }
 
 export function clearLocalToken(): void {
-  try {
-    localStorage.removeItem(LOCAL_TOKEN_KEY);
-  } catch {}
+  // لم يعد مستخدماً - الـ cookie يُمسح من السيرفر
 }
 
 export function useLocalAuth() {
@@ -33,22 +25,19 @@ export function useLocalAuth() {
   });
 
   const loginMutation = trpc.localAuth.login.useMutation({
-    onSuccess: (data) => {
-      if (data.token) setLocalToken(data.token);
+    onSuccess: () => {
       utils.localAuth.me.invalidate();
     },
   });
 
   const registerMutation = trpc.localAuth.register.useMutation({
-    onSuccess: (data) => {
-      if (data.token) setLocalToken(data.token);
+    onSuccess: () => {
       utils.localAuth.me.invalidate();
     },
   });
 
   const logoutMutation = trpc.localAuth.logout.useMutation({
     onSuccess: () => {
-      clearLocalToken();
       utils.localAuth.me.setData(undefined, null);
       utils.localAuth.me.invalidate();
     },

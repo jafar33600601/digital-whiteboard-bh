@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useLocalAuth } from "@/hooks/useLocalAuth";
 import WhiteboardCanvas, { WhiteboardCanvasRef } from "@/components/WhiteboardCanvas";
 import { toast } from "sonner";
 
@@ -11,7 +11,7 @@ interface TeacherBoardProps {
 
 export default function TeacherBoard({ sessionId }: TeacherBoardProps) {
   const [, navigate] = useLocation();
-  const { user } = useAuth();
+  const { user } = useLocalAuth();
   const canvasRef = useRef<WhiteboardCanvasRef>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);

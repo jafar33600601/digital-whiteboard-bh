@@ -30,9 +30,26 @@ const IS_LOCAL_AUTH = true;
 
 // مكوّن حماية المسارات للنظام المحلي
 function LocalProtectedRoute({ children }: { children: React.ReactNode }) {
+  // التحقق المباشر من localStorage أولاً (بدون انتظار tRPC)
+  const hasToken = Boolean(localStorage.getItem('local_auth_token'));
   const { isAuthenticated, loading } = useLocalAuth();
+  
+  // إذا لا يوجد token في localStorage → redirect فوري
+  if (!hasToken) {
+    window.location.href = "/login";
+    return null;
+  }
+  
+  // يوجد token → انتظر التحقق من السيرفر
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
-  if (!isAuthenticated) { window.location.href = "/login"; return null; }
+  
+  // السيرفر رفض الـ token (منتهي الصلاحية مثلاً)
+  if (!isAuthenticated) {
+    localStorage.removeItem('local_auth_token');
+    window.location.href = "/login";
+    return null;
+  }
+  
   return <>{children}</>;
 }
 

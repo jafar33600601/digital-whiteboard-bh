@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useLocalAuth } from "@/hooks/useLocalAuth";
 import WhiteboardCanvas, { type WhiteboardCanvasRef } from "@/components/WhiteboardCanvas";
 import type { CanvasElement } from "@/components/WhiteboardCanvas";
 import { toast } from "sonner";
@@ -66,7 +66,7 @@ export default function TeacherDashboard() {
   const params = useParams<{ sessionId: string }>();
   const sessionId = parseInt(params.sessionId || "0");
   const [, navigate] = useLocation();
-  const { user } = useAuth();
+  const { user } = useLocalAuth();
 
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(null);
   const [isSavingCorrection, setIsSavingCorrection] = useState(false);
