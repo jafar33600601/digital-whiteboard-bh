@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import "./index.css";
+import { getLocalToken, clearLocalToken } from "./lib/localToken";
 
 const queryClient = new QueryClient();
 
@@ -17,9 +18,9 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  // توجيه إلى صفحة تسجيل الدخول المحلية
   const currentPath = window.location.pathname;
   if (!currentPath.startsWith('/login') && !currentPath.startsWith('/register')) {
+    clearLocalToken();
     window.location.href = '/login';
   }
 };
@@ -45,6 +46,13 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      headers() {
+        const token = getLocalToken();
+        if (token) {
+          return { Authorization: `Bearer ${token}` };
+        }
+        return {};
+      },
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),

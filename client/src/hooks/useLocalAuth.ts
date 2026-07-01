@@ -1,43 +1,42 @@
 import { trpc } from "@/lib/trpc";
 import { useCallback } from "react";
+import { getLocalToken, setLocalToken, clearLocalToken } from "../lib/localToken";
 
-// دوال مساعدة للـ cookie (للتوافق مع الكود القديم)
-export function getLocalToken(): string | null {
-  // لم يعد مستخدماً - الـ cookie يُرسل تلقائياً
-  return null;
-}
-
-export function setLocalToken(_token: string): void {
-  // لم يعد مستخدماً - الـ cookie يُضبط من السيرفر
-}
-
-export function clearLocalToken(): void {
-  // لم يعد مستخدماً - الـ cookie يُمسح من السيرفر
-}
+export { getLocalToken, setLocalToken, clearLocalToken };
 
 export function useLocalAuth() {
   const utils = trpc.useUtils();
+
+  const hasToken = Boolean(getLocalToken());
+
   const meQuery = trpc.localAuth.me.useQuery(undefined, {
-    retry: 1,
-    retryDelay: 300,
+    retry: false,
+    retryDelay: 0,
     refetchOnWindowFocus: false,
-    staleTime: 30_000,
+    staleTime: 60_000,
+    // لا تُشغّل الـ query إذا لم يكن هناك token
+    enabled: hasToken,
   });
 
   const loginMutation = trpc.localAuth.login.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // حفظ الـ token في localStorage
+      setLocalToken(data.token);
+      // إعادة تشغيل localAuth.me مع الـ token الجديد
       utils.localAuth.me.invalidate();
     },
   });
 
   const registerMutation = trpc.localAuth.register.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setLocalToken(data.token);
       utils.localAuth.me.invalidate();
     },
   });
 
   const logoutMutation = trpc.localAuth.logout.useMutation({
     onSuccess: () => {
+      clearLocalToken();
       utils.localAuth.me.setData(undefined, null);
       utils.localAuth.me.invalidate();
     },
@@ -49,8 +48,10 @@ export function useLocalAuth() {
 
   return {
     user: meQuery.data ?? null,
-    loading: meQuery.isPending || meQuery.isFetching,
+    // loading فقط إذا كان هناك token وننتظر الـ server
+    loading: hasToken && (meQuery.isPending || meQuery.isFetching),
     isAuthenticated: Boolean(meQuery.data),
+    hasToken,
     login: loginMutation.mutateAsync,
     loginLoading: loginMutation.isPending,
     loginError: loginMutation.error,

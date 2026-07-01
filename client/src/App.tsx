@@ -30,12 +30,18 @@ const IS_LOCAL_AUTH = true;
 
 // مكوّن حماية المسارات للنظام المحلي
 function LocalProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useLocalAuth();
+  const { isAuthenticated, loading, hasToken } = useLocalAuth();
   
-  // انتظر حتى يتحقق السيرفر من الـ cookie
+  // إذا لا يوجد token في localStorage → redirect فوري بدون انتظار
+  if (!hasToken) {
+    window.location.href = "/login";
+    return null;
+  }
+  
+  // يوجد token → انتظر تحقق السيرفر
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
   
-  // الـ cookie غير موجود أو منتهي الصلاحية
+  // السيرفر رفض الـ token (منتهي الصلاحية)
   if (!isAuthenticated) {
     window.location.href = "/login";
     return null;
