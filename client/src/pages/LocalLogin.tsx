@@ -15,9 +15,9 @@ export default function LocalLogin() {
 
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: (data) => {
-      utils.localAuth.me.invalidate();
       toast.success(`مرحباً ${data.name}!`);
-      navigate("/");
+      // إعادة تحميل كاملة لضمان قراءة الكوكي الجديد
+      setTimeout(() => { window.location.href = "/"; }, 600);
     },
     onError: (err) => {
       toast.error(err.message || "البريد الإلكتروني أو كلمة المرور غير صحيحة");

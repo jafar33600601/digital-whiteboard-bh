@@ -17,9 +17,9 @@ export default function LocalRegister() {
 
   const registerMutation = trpc.localAuth.register.useMutation({
     onSuccess: (data) => {
-      utils.localAuth.me.invalidate();
       toast.success(`مرحباً ${data.name}! تم إنشاء حسابك بنجاح`);
-      navigate("/");
+      // إعادة تحميل كاملة لضمان قراءة الكوكي الجديد
+      setTimeout(() => { window.location.href = "/"; }, 600);
     },
     onError: (err) => {
       if (err.data?.code === "CONFLICT") {

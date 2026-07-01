@@ -1055,7 +1055,7 @@ const wheelRouter = router({
 // ===== Local Auth Router (Independent login without Manus OAuth) =====
 const LOCAL_AUTH_COOKIE = "local_session";
 const getJwtSecret = () => new TextEncoder().encode(process.env.JWT_SECRET || "local-secret-key-change-in-production");
-
+const LOCAL_AUTH_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
 const localAuthRouter = router({
   // تسجيل حساب جديد
   register: publicProcedure
@@ -1074,10 +1074,10 @@ const localAuthRouter = router({
         .setProtectedHeader({ alg: "HS256" })
         .setExpirationTime("30d")
         .sign(getJwtSecret());
-      ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+      const cookieOpts = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { ...cookieOpts, maxAge: LOCAL_AUTH_MAX_AGE });
       return { success: true, name: input.name };
     }),
-
   // تسجيل الدخول
   login: publicProcedure
     .input(z.object({
@@ -1093,7 +1093,8 @@ const localAuthRouter = router({
         .setProtectedHeader({ alg: "HS256" })
         .setExpirationTime("30d")
         .sign(getJwtSecret());
-      ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+      const cookieOpts = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { ...cookieOpts, maxAge: LOCAL_AUTH_MAX_AGE });
       return { success: true, name: user.name, role: user.role };
     }),
 
@@ -1116,7 +1117,8 @@ const localAuthRouter = router({
   // تسجيل الخروج
   logout: publicProcedure
     .mutation(({ ctx }) => {
-      ctx.res.clearCookie(LOCAL_AUTH_COOKIE);
+      const cookieOpts = getSessionCookieOptions(ctx.req);
+      ctx.res.clearCookie(LOCAL_AUTH_COOKIE, cookieOpts);
       return { success: true };
     }),
 });
