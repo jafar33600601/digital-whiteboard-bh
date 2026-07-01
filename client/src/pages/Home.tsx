@@ -6,7 +6,17 @@ import { toast } from "sonner";
 
 export default function Home() {
   const [, navigate] = useLocation();
-  const { user, isAuthenticated, loading } = useLocalAuth();
+  const { user, isAuthenticated, loading, logout, logoutLoading } = useLocalAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch {
+      // حتى لو فشل الـ server، نمسح الـ token ونعيد التوجيه
+      navigate("/login");
+    }
+  };
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -199,6 +209,19 @@ export default function Home() {
                 </div>
                 <span className="text-sm font-medium text-slate-700">{user?.name}</span>
               </div>
+              <button
+                onClick={handleLogout}
+                disabled={logoutLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all disabled:opacity-50"
+                title="تسجيل الخروج"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span className="hidden sm:inline">{logoutLoading ? "..." : "خروج"}</span>
+              </button>
             </div>
           ) : (
             <button
