@@ -1085,7 +1085,7 @@ const localAuthRouter = router({
         .sign(getJwtSecret());
       const cookieOpts = getSessionCookieOptions(ctx.req);
       ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { ...cookieOpts, maxAge: LOCAL_AUTH_MAX_AGE });
-      return { success: true, name: input.name };
+      return { success: true, name: input.name, token };
     }),
   // تسجيل الدخول
   login: publicProcedure
@@ -1104,16 +1104,22 @@ const localAuthRouter = router({
         .sign(getJwtSecret());
       const cookieOpts = getSessionCookieOptions(ctx.req);
       ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { ...cookieOpts, maxAge: LOCAL_AUTH_MAX_AGE });
-      return { success: true, name: user.name, role: user.role };
+      return { success: true, name: user.name, role: user.role, token };
     }),
 
   // الحصول على المستخدم الحالي
   me: publicProcedure
     .query(async ({ ctx }) => {
-      // قراءة الكوكي من raw header لأن المشروع لا يستخدم cookie-parser middleware
-      const cookieHeader = ctx.req.headers.cookie;
-      const cookies = cookieHeader ? parseCookies(cookieHeader) : {};
-      const token = cookies[LOCAL_AUTH_COOKIE];
+      // قراءة الـ token من Authorization header أو من الكوكي
+      let token: string | undefined;
+      const authHeader = ctx.req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.slice(7);
+      } else {
+        const cookieHeader = ctx.req.headers.cookie;
+        const cookies = cookieHeader ? parseCookies(cookieHeader) : {};
+        token = cookies[LOCAL_AUTH_COOKIE];
+      }
       if (!token) return null;
       try {
         const { payload } = await jwtVerify(token, getJwtSecret());

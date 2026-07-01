@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { setLocalToken } from "@/hooks/useLocalAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,9 +16,9 @@ export default function LocalLogin() {
 
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: (data) => {
+      if (data.token) setLocalToken(data.token);
       toast.success(`مرحباً ${data.name}!`);
-      // إعادة تحميل كاملة لضمان قراءة الكوكي الجديد
-      setTimeout(() => { window.location.href = "/"; }, 600);
+      window.location.href = "/";
     },
     onError: (err) => {
       toast.error(err.message || "البريد الإلكتروني أو كلمة المرور غير صحيحة");

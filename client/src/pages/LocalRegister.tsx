@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { setLocalToken } from "@/hooks/useLocalAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,9 +18,9 @@ export default function LocalRegister() {
 
   const registerMutation = trpc.localAuth.register.useMutation({
     onSuccess: (data) => {
+      if (data.token) setLocalToken(data.token);
       toast.success(`مرحباً ${data.name}! تم إنشاء حسابك بنجاح`);
-      // إعادة تحميل كاملة لضمان قراءة الكوكي الجديد
-      setTimeout(() => { window.location.href = "/"; }, 600);
+      window.location.href = "/";
     },
     onError: (err) => {
       if (err.data?.code === "CONFLICT") {
