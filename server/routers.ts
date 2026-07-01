@@ -85,7 +85,12 @@ import {
   createLocalUser,
   getLocalUserByEmail,
   getLocalUserById,
+  markLocalUserVerified,
+  createEmailVerification,
+  getEmailVerification,
+  markVerificationUsed,
 } from "./db";
+import { sendVerificationEmail } from "./email";
 import { storagePut } from "./storage";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
@@ -1073,19 +1078,67 @@ const localAuthRouter = router({
       email: z.string().email(),
       password: z.string().min(6),
     }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
       const existing = await getLocalUserByEmail(input.email);
-      if (existing) throw new TRPCError({ code: "CONFLICT", message: "البريد الإلكتروني مستخدم بالفعل" });
+      if (existing && existing.isVerified) {
+        throw new TRPCError({ code: "CONFLICT", message: "البريد الإلكتروني مستخدم بالفعل" });
+      }
+      // حذف الحساب غير المفعّل إذا وجد
+      if (existing && !existing.isVerified) {
+        // سيتم تحديثه لاحقاً
+      }
       const passwordHash = await bcrypt.hash(input.password, 10);
-      const userId = await createLocalUser(input.name, input.email, passwordHash);
-      // إنشاء JWT token
-      const token = await new SignJWT({ sub: String(userId), type: "local" })
+      if (!existing) {
+        await createLocalUser(input.name, input.email, passwordHash);
+      }
+      // توليد رمز 6 أرقام
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 دقائق
+      await createEmailVerification(input.email, code, expiresAt);
+      await sendVerificationEmail(input.email, code, input.name);
+      return { success: true, requiresVerification: true, email: input.email };
+    }),
+
+  // التحقق من رمز البريد الإلكتروني
+  verifyEmail: publicProcedure
+    .input(z.object({
+      email: z.string().email(),
+      code: z.string().length(6),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const verification = await getEmailVerification(input.email, input.code);
+      if (!verification) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "رمز التحقق غير صحيح أو منتهي الصلاحية" });
+      }
+      if (new Date() > verification.expiresAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "انتهت صلاحية الرمز، اطلب رمزاً جديداً" });
+      }
+      await markVerificationUsed(verification.id);
+      await markLocalUserVerified(input.email);
+      // إنشاء JWT token وتسجيل الدخول تلقائياً
+      const user = await getLocalUserByEmail(input.email);
+      if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "خطأ غير متوقع" });
+      const token = await new SignJWT({ sub: String(user.id), type: "local" })
         .setProtectedHeader({ alg: "HS256" })
         .setExpirationTime("30d")
         .sign(getJwtSecret());
       const cookieOpts = getSessionCookieOptions(ctx.req);
       ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { ...cookieOpts, maxAge: LOCAL_AUTH_MAX_AGE });
-      return { success: true, name: input.name, token };
+      return { success: true, name: user.name, token };
+    }),
+
+  // إعادة إرسال رمز التحقق
+  resendVerification: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ input }) => {
+      const user = await getLocalUserByEmail(input.email);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "البريد غير مسجّل" });
+      if (user.isVerified) throw new TRPCError({ code: "BAD_REQUEST", message: "الحساب مفعّل بالفعل" });
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      await createEmailVerification(input.email, code, expiresAt);
+      await sendVerificationEmail(input.email, code, user.name);
+      return { success: true };
     }),
   // تسجيل الدخول
   login: publicProcedure
@@ -1096,6 +1149,7 @@ const localAuthRouter = router({
     .mutation(async ({ ctx, input }) => {
       const user = await getLocalUserByEmail(input.email);
       if (!user) throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
+      if (!user.isVerified) throw new TRPCError({ code: "FORBIDDEN", message: "يرجى تفعيل حسابك عبر رمز التحقق المرسل لبريدك الإلكتروني" });
       const valid = await bcrypt.compare(input.password, user.passwordHash);
       if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
       const token = await new SignJWT({ sub: String(user.id), type: "local" })

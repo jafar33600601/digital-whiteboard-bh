@@ -27,13 +27,6 @@ export function useLocalAuth() {
     },
   });
 
-  const registerMutation = trpc.localAuth.register.useMutation({
-    onSuccess: (data) => {
-      setLocalToken(data.token);
-      utils.localAuth.me.invalidate();
-    },
-  });
-
   const logoutMutation = trpc.localAuth.logout.useMutation({
     onSuccess: () => {
       clearLocalToken();
@@ -55,9 +48,6 @@ export function useLocalAuth() {
     login: loginMutation.mutateAsync,
     loginLoading: loginMutation.isPending,
     loginError: loginMutation.error,
-    register: registerMutation.mutateAsync,
-    registerLoading: registerMutation.isPending,
-    registerError: registerMutation.error,
     logout,
     logoutLoading: logoutMutation.isPending,
     refresh: () => meQuery.refetch(),

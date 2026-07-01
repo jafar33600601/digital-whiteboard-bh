@@ -1,6 +1,6 @@
 import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress, classrooms, classroomStudents, wheelQuestions, type InsertClassroom, type InsertClassroomStudent, type InsertWheelQuestion, localUsers } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress, classrooms, classroomStudents, wheelQuestions, type InsertClassroom, type InsertClassroomStudent, type InsertWheelQuestion, localUsers, emailVerifications } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -665,4 +665,33 @@ export async function getLocalUserById(id: number) {
   if (!db) return null;
   const rows = await db.select().from(localUsers).where(eq(localUsers.id, id)).limit(1);
   return rows[0] ?? null;
+}
+
+export async function markLocalUserVerified(email: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(localUsers).set({ isVerified: 1 }).where(eq(localUsers.email, email));
+}
+
+export async function createEmailVerification(email: string, code: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  // حذف الرموز القديمة لنفس الإيميل
+  await db.delete(emailVerifications).where(eq(emailVerifications.email, email));
+  await db.insert(emailVerifications).values({ email, code, expiresAt });
+}
+
+export async function getEmailVerification(email: string, code: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(emailVerifications)
+    .where(and(eq(emailVerifications.email, email), eq(emailVerifications.code, code), eq(emailVerifications.used, 0)))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function markVerificationUsed(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(emailVerifications).set({ used: 1 }).where(eq(emailVerifications.id, id));
 }

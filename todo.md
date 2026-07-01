@@ -282,5 +282,20 @@
 - [x] إنشاء hook useLocalAuth.ts
 - [x] تعديل App.tsx لدعم IS_LOCAL_AUTH (حماية المسارات)
 - [x] تعديل Home.tsx لدعم IS_LOCAL_AUTH (أزرار تسجيل الدخول/التسجيل)
-- [ ] رفع التحديثات إلى GitHub (Auto-Deploy إلى Railway)
-- [ ] إضافة متغير VITE_AUTH_MODE=local في Railway environment variables
+- [x] رفع التحديثات إلى GitHub (Auto-Deploy إلى Railway)
+- [x] إضافة متغير VITE_AUTH_MODE=local في Railway environment variables
+
+## مزامنة Railway مع Manus (2026-07-02)
+- [x] إصلاح schema قاعدة بيانات Railway (live_quiz_sessions + wheel_questions + local_users)
+- [x] إضافة زر تسجيل الخروج في navbar
+- [ ] مزامنة تلقائية: كل تغيير في Railway يُحدَّث في Manus
+
+## التحقق من البريد الإلكتروني عند التسجيل (2026-07-02)
+- [x] تثبيت مكتبة Resend
+- [x] إضافة جدول email_verifications في قاعدة البيانات
+- [x] تعديل procedure register: لا يُفعَّل الحساب حتى يتم التحقق
+- [x] إضافة procedure sendVerificationCode: يُرسل رمز 6 أرقام للإيميل
+- [x] إضافة procedure verifyEmail: يتحقق من الرمز ويُفعّل الحساب
+- [x] تعديل صفحة LocalRegister.tsx: بعد التسجيل تظهر خطوة إدخال الرمز
+- [ ] إضافة RESEND_API_KEY في البيئة
+- [ ] رفع التحديثات إلى GitHub
