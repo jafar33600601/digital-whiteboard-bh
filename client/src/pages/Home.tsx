@@ -2,12 +2,21 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useLocalAuth } from "@/hooks/useLocalAuth";
 import { getLoginUrl } from "@/const";
 import { toast } from "sonner";
 
+const IS_LOCAL_AUTH = import.meta.env.VITE_AUTH_MODE === "local" || !import.meta.env.VITE_OAUTH_PORTAL_URL;
+
 export default function Home() {
   const [, navigate] = useLocation();
-  const { user, isAuthenticated, loading } = useAuth();
+  const manusAuth = useAuth();
+  const localAuth = useLocalAuth();
+  const { user, isAuthenticated, loading } = IS_LOCAL_AUTH ? {
+    user: localAuth.user,
+    isAuthenticated: localAuth.isAuthenticated,
+    loading: localAuth.loading,
+  } : manusAuth;
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -202,12 +211,21 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <a
-              href={getLoginUrl()}
-              className="px-4 py-2 bg-gradient-to-l from-indigo-600 to-purple-600 text-white font-semibold rounded-xl text-sm hover:opacity-90 transition-opacity"
-            >
-              تسجيل الدخول
-            </a>
+            IS_LOCAL_AUTH ? (
+              <button
+                onClick={() => navigate("/login")}
+                className="px-4 py-2 bg-gradient-to-l from-indigo-600 to-purple-600 text-white font-semibold rounded-xl text-sm hover:opacity-90 transition-opacity"
+              >
+                تسجيل الدخول
+              </button>
+            ) : (
+              <a
+                href={getLoginUrl()}
+                className="px-4 py-2 bg-gradient-to-l from-indigo-600 to-purple-600 text-white font-semibold rounded-xl text-sm hover:opacity-90 transition-opacity"
+              >
+                تسجيل الدخول
+              </a>
+            )
           )}
         </div>
       </nav>
@@ -233,15 +251,27 @@ export default function Home() {
             منصة تعليمية متكاملة تتيح للمعلمين إنشاء سبورات رقمية تفاعلية ومشاركتها مع الطلاب للإجابة والتصحيح الفوري
           </p>
 
-          <a
-            href={getLoginUrl()}
-            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-l from-indigo-600 to-purple-600 text-white font-bold rounded-2xl text-lg hover:opacity-90 transition-all hover:shadow-lg hover:shadow-indigo-200 hover:-translate-y-0.5"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" />
-            </svg>
-            ابدأ الآن مجاناً
-          </a>
+          {IS_LOCAL_AUTH ? (
+            <button
+              onClick={() => navigate("/register")}
+              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-l from-indigo-600 to-purple-600 text-white font-bold rounded-2xl text-lg hover:opacity-90 transition-all hover:shadow-lg hover:shadow-indigo-200 hover:-translate-y-0.5"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" />
+              </svg>
+              ابدأ الآن مجاناً
+            </button>
+          ) : (
+            <a
+              href={getLoginUrl()}
+              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-l from-indigo-600 to-purple-600 text-white font-bold rounded-2xl text-lg hover:opacity-90 transition-all hover:shadow-lg hover:shadow-indigo-200 hover:-translate-y-0.5"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><polyline points="10 17 15 12 10 7" /><line x1="15" y1="12" x2="3" y2="12" />
+              </svg>
+              ابدأ الآن مجاناً
+            </a>
+          )}
 
           {/* الميزات */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-20">

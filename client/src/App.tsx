@@ -19,15 +19,31 @@ import PadletStudent from "./pages/PadletStudent";
 import QuizizzHost from "./pages/QuizizzHost";
 import QuizizzStudent from "./pages/QuizizzStudent";
 import SpinnerWheel from "./pages/SpinnerWheel";
+import LocalLogin from "./pages/LocalLogin";
+import LocalRegister from "./pages/LocalRegister";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useLocalAuth } from "./hooks/useLocalAuth";
 import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+
+// إذا كان VITE_AUTH_MODE=local أو لم يكن هناك VITE_OAUTH_PORTAL_URL → نستخدم نظام تسجيل الدخول المحلي
+const IS_LOCAL_AUTH = import.meta.env.VITE_AUTH_MODE === "local" || !import.meta.env.VITE_OAUTH_PORTAL_URL;
+
+// مكوّن حماية المسارات للنظام المحلي
+function LocalProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading } = useLocalAuth();
+  if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
+  if (!isAuthenticated) { window.location.href = "/login"; return null; }
+  return <>{children}</>;
+}
 
 function TeacherBoardRoute() {
   const pathParts = window.location.pathname.split("/");
   const sessionId = parseInt(pathParts[pathParts.length - 1] || "0");
+  if (IS_LOCAL_AUTH) {
+    return <LocalProtectedRoute><div className="min-h-screen flex flex-col bg-slate-50" dir="rtl"><TeacherBoard sessionId={sessionId} /></div></LocalProtectedRoute>;
+  }
   const { isAuthenticated, loading } = useAuth();
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" dir="rtl">
@@ -35,12 +51,10 @@ function TeacherBoardRoute() {
       </div>
     );
   }
-
   if (!isAuthenticated) {
     window.location.href = getLoginUrl();
     return null;
   }
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-50" dir="rtl">
       <TeacherBoard sessionId={sessionId} />
@@ -49,10 +63,10 @@ function TeacherBoardRoute() {
 }
 
 function TeacherDashboardRoute() {
-  const pathParts = window.location.pathname.split("/");
-  const sessionId = parseInt(pathParts[pathParts.length - 1] || "0");
+  if (IS_LOCAL_AUTH) {
+    return <LocalProtectedRoute><div className="min-h-screen flex flex-col bg-slate-50" dir="rtl"><TeacherDashboard /></div></LocalProtectedRoute>;
+  }
   const { isAuthenticated, loading } = useAuth();
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" dir="rtl">
@@ -60,46 +74,44 @@ function TeacherDashboardRoute() {
       </div>
     );
   }
-
   if (!isAuthenticated) {
     window.location.href = getLoginUrl();
     return null;
   }
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-50" dir="rtl">
       <TeacherDashboard />
     </div>
   );
 }
-
 function QuizBuilderRoute({ params }: { params?: { id?: string } }) {
+  if (IS_LOCAL_AUTH) return <LocalProtectedRoute><QuizBuilder params={params} /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
   if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
   return <QuizBuilder params={params} />;
 }
-
 function QuizResultsRoute({ params }: { params?: { id?: string } }) {
+  if (IS_LOCAL_AUTH) return <LocalProtectedRoute><QuizResults params={params} /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
   if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
   return <QuizResults params={params} />;
 }
-
 function LiveQuizHostRoute({ params }: { params?: { id?: string } }) {
+  const quizId = params?.id ? parseInt(params.id) : 0;
+  if (IS_LOCAL_AUTH) return <LocalProtectedRoute><LiveQuizHost quizId={quizId} /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
   if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
-  const quizId = params?.id ? parseInt(params.id) : 0;
   return <LiveQuizHost quizId={quizId} />;
 }
-
 function LiveQuizResultsRoute({ params }: { params?: { id?: string } }) {
+  const quizId = params?.id ? parseInt(params.id) : 0;
+  if (IS_LOCAL_AUTH) return <LocalProtectedRoute><LiveQuizResults quizId={quizId} /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full" /></div>;
   if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
-  const quizId = params?.id ? parseInt(params.id) : 0;
   return <LiveQuizResults quizId={quizId} />;
 }
 
@@ -119,6 +131,7 @@ function PadletStudentJoinRoute({ params }: { params?: { code?: string } }) {
 }
 
 function PadletBoardRoute({ params }: { params?: { id?: string } }) {
+  if (IS_LOCAL_AUTH) return <LocalProtectedRoute><PadletBoard /></LocalProtectedRoute>;
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center" dir="rtl"><div className="animate-spin w-10 h-10 border-4 border-violet-500 border-t-transparent rounded-full" /></div>;
   if (!isAuthenticated) { window.location.href = getLoginUrl(); return null; }
@@ -144,6 +157,8 @@ function Router() {
       <Route path="/padlet-join" component={() => <PadletStudent />} />
       <Route path="/padlet-join/:code" component={PadletStudentJoinRoute} />
       <Route path="/spinner-wheel" component={() => <SpinnerWheel />} />
+      <Route path="/login" component={LocalLogin} />
+      <Route path="/register" component={LocalRegister} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

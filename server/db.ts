@@ -1,6 +1,6 @@
 import { eq, desc, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress, classrooms, classroomStudents, wheelQuestions, type InsertClassroom, type InsertClassroomStudent, type InsertWheelQuestion } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress, classrooms, classroomStudents, wheelQuestions, type InsertClassroom, type InsertClassroomStudent, type InsertWheelQuestion, localUsers } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -642,4 +642,27 @@ export async function updateWheelQuestion(id: number, userId: number, question: 
     options: JSON.stringify(options),
     correctAnswer: correctAnswer ?? null,
   }).where(and(eq(wheelQuestions.id, id), eq(wheelQuestions.userId, userId)));
+}
+
+// ===== Local Users (Independent Auth) =====
+
+export async function createLocalUser(name: string, email: string, passwordHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(localUsers).values({ name, email, passwordHash });
+  return result.insertId as number;
+}
+
+export async function getLocalUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(localUsers).where(eq(localUsers.email, email)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getLocalUserById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(localUsers).where(eq(localUsers.id, id)).limit(1);
+  return rows[0] ?? null;
 }

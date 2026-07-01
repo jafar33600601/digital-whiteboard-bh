@@ -263,3 +263,24 @@
 - [x] زر "مشاهدة" في قسم الاختبارات - فتح في نافذة جديدة
 - [x] زر "فتح اللوحة" في البادلت - فتح في نافذة جديدة
 - [x] التأكد من أن أزرار "إنشاء جديد" تبقى في نفس الصفحة
+
+## Auto-Deploy ونظام تسجيل الدخول المستقل على Railway (2026-07-01)
+- [ ] إعداد GitHub Actions للنشر التلقائي على Railway عند كل تحديث
+- [ ] بناء نظام تسجيل دخول مستقل (username + password) في server/routers
+- [ ] إضافة جدول local_users في قاعدة البيانات
+- [ ] بناء صفحة تسجيل حساب جديد على Railway
+- [ ] بناء صفحة تسجيل الدخول على Railway
+- [ ] اختبار نظام تسجيل الدخول على Railway
+
+## نظام تسجيل الدخول المستقل لـ Railway (2026-07-01)
+- [x] إضافة جدول localUsers في drizzle/schema.ts
+- [x] إضافة دوال createLocalUser, getLocalUserByEmail, getLocalUserById في server/db.ts
+- [x] إضافة localAuthRouter في server/routers.ts (register, login, me, logout)
+- [x] إنشاء جدول local_users في قاعدة بيانات Railway
+- [x] بناء صفحة LocalLogin.tsx (تسجيل الدخول)
+- [x] بناء صفحة LocalRegister.tsx (إنشاء حساب)
+- [x] إنشاء hook useLocalAuth.ts
+- [x] تعديل App.tsx لدعم IS_LOCAL_AUTH (حماية المسارات)
+- [x] تعديل Home.tsx لدعم IS_LOCAL_AUTH (أزرار تسجيل الدخول/التسجيل)
+- [ ] رفع التحديثات إلى GitHub (Auto-Deploy إلى Railway)
+- [ ] إضافة متغير VITE_AUTH_MODE=local في Railway environment variables

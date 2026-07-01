@@ -141,6 +141,13 @@
       "when": 1777563537384,
       "tag": "0019_purple_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1782915027627,
+      "tag": "0020_fresh_daredevil",
+      "breakpoints": true
     }
   ]
 }

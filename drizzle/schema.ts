@@ -287,3 +287,15 @@ export const wheelQuestions = mysqlTable("wheel_questions", {
 });
 export type WheelQuestion = typeof wheelQuestions.$inferSelect;
 export type InsertWheelQuestion = typeof wheelQuestions.$inferInsert;
+
+// جدول المستخدمين المحليين (تسجيل دخول مستقل بدون Manus OAuth)
+export const localUsers = mysqlTable("local_users", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  role: mysqlEnum("role", ["admin", "user"]).default("user").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type LocalUser = typeof localUsers.$inferSelect;
+export type InsertLocalUser = typeof localUsers.$inferInsert;

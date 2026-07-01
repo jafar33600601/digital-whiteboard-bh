@@ -81,8 +81,13 @@ import {
   createWheelQuestion,
   deleteWheelQuestion,
   updateWheelQuestion,
+  createLocalUser,
+  getLocalUserByEmail,
+  getLocalUserById,
 } from "./db";
 import { storagePut } from "./storage";
+import bcrypt from "bcryptjs";
+import { SignJWT, jwtVerify } from "jose";
 
 // ===== Quiz Router =====
 const quizRouter = router({
@@ -1046,6 +1051,76 @@ const wheelRouter = router({
       return { success: true };
     }),
 });
+
+// ===== Local Auth Router (Independent login without Manus OAuth) =====
+const LOCAL_AUTH_COOKIE = "local_session";
+const getJwtSecret = () => new TextEncoder().encode(process.env.JWT_SECRET || "local-secret-key-change-in-production");
+
+const localAuthRouter = router({
+  // تسجيل حساب جديد
+  register: publicProcedure
+    .input(z.object({
+      name: z.string().min(2).max(100),
+      email: z.string().email(),
+      password: z.string().min(6),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const existing = await getLocalUserByEmail(input.email);
+      if (existing) throw new TRPCError({ code: "CONFLICT", message: "البريد الإلكتروني مستخدم بالفعل" });
+      const passwordHash = await bcrypt.hash(input.password, 10);
+      const userId = await createLocalUser(input.name, input.email, passwordHash);
+      // إنشاء JWT token
+      const token = await new SignJWT({ sub: String(userId), type: "local" })
+        .setProtectedHeader({ alg: "HS256" })
+        .setExpirationTime("30d")
+        .sign(getJwtSecret());
+      ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+      return { success: true, name: input.name };
+    }),
+
+  // تسجيل الدخول
+  login: publicProcedure
+    .input(z.object({
+      email: z.string().email(),
+      password: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await getLocalUserByEmail(input.email);
+      if (!user) throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
+      const valid = await bcrypt.compare(input.password, user.passwordHash);
+      if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
+      const token = await new SignJWT({ sub: String(user.id), type: "local" })
+        .setProtectedHeader({ alg: "HS256" })
+        .setExpirationTime("30d")
+        .sign(getJwtSecret());
+      ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: "lax" });
+      return { success: true, name: user.name, role: user.role };
+    }),
+
+  // الحصول على المستخدم الحالي
+  me: publicProcedure
+    .query(async ({ ctx }) => {
+      const token = ctx.req.cookies?.[LOCAL_AUTH_COOKIE];
+      if (!token) return null;
+      try {
+        const { payload } = await jwtVerify(token, getJwtSecret());
+        const userId = Number(payload.sub);
+        const user = await getLocalUserById(userId);
+        if (!user) return null;
+        return { id: user.id, name: user.name, email: user.email, role: user.role };
+      } catch {
+        return null;
+      }
+    }),
+
+  // تسجيل الخروج
+  logout: publicProcedure
+    .mutation(({ ctx }) => {
+      ctx.res.clearCookie(LOCAL_AUTH_COOKIE);
+      return { success: true };
+    }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -1316,5 +1391,7 @@ export const appRouter = router({
   padlet: padletRouter,
   quizizz: quizizzRouter,
   wheel: wheelRouter,
+  localAuth: localAuthRouter,
 });
+// dummy placeholder to avoid unused import warning
 export type AppRouter = typeof appRouter;
