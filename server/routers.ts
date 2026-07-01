@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parse as parseCookies } from "cookie";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -1101,7 +1102,10 @@ const localAuthRouter = router({
   // الحصول على المستخدم الحالي
   me: publicProcedure
     .query(async ({ ctx }) => {
-      const token = ctx.req.cookies?.[LOCAL_AUTH_COOKIE];
+      // قراءة الكوكي من raw header لأن المشروع لا يستخدم cookie-parser middleware
+      const cookieHeader = ctx.req.headers.cookie;
+      const cookies = cookieHeader ? parseCookies(cookieHeader) : {};
+      const token = cookies[LOCAL_AUTH_COOKIE];
       if (!token) return null;
       try {
         const { payload } = await jwtVerify(token, getJwtSecret());
