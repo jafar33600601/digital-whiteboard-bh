@@ -296,6 +296,7 @@ export const localUsers = mysqlTable("local_users", {
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: mysqlEnum("role", ["admin", "user"]).default("user").notNull(),
   isVerified: int("isVerified").default(0).notNull(),
+  isActive: int("isActive").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type LocalUser = typeof localUsers.$inferSelect;

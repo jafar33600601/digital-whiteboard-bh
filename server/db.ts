@@ -707,3 +707,43 @@ export async function updateLocalUserPassword(id: number, passwordHash: string) 
   if (!db) throw new Error("Database not available");
   await db.update(localUsers).set({ passwordHash }).where(eq(localUsers.id, id));
 }
+
+// ===== Admin User Management =====
+
+export async function getAllLocalUsers() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select({
+    id: localUsers.id,
+    name: localUsers.name,
+    email: localUsers.email,
+    role: localUsers.role,
+    isVerified: localUsers.isVerified,
+    isActive: localUsers.isActive,
+    createdAt: localUsers.createdAt,
+  }).from(localUsers).orderBy(localUsers.createdAt);
+}
+
+export async function setUserActive(id: number, isActive: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(localUsers).set({ isActive: isActive ? 1 : 0 }).where(eq(localUsers.id, id));
+}
+
+export async function setUserRole(id: number, role: "admin" | "user") {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(localUsers).set({ role }).where(eq(localUsers.id, id));
+}
+
+export async function adminResetPassword(id: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(localUsers).set({ passwordHash }).where(eq(localUsers.id, id));
+}
+
+export async function deleteLocalUser(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(localUsers).where(eq(localUsers.id, id));
+}

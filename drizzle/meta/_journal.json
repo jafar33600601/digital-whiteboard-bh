@@ -155,6 +155,13 @@
       "when": 1782948194155,
       "tag": "0021_big_scourge",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1782956705506,
+      "tag": "0022_brainy_nomad",
+      "breakpoints": true
     }
   ]
 }

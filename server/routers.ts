@@ -91,6 +91,11 @@ import {
   markVerificationUsed,
   updateLocalUserProfile,
   updateLocalUserPassword,
+  getAllLocalUsers,
+  setUserActive,
+  setUserRole,
+  adminResetPassword,
+  deleteLocalUser,
 } from "./db";
 import { sendVerificationEmail } from "./email";
 import { storagePut } from "./storage";
@@ -1259,6 +1264,89 @@ const localAuthRouter = router({
     }),
 });
 
+// دالة مساعدة لاستخراج التوكن من الطلب
+function getLocalTokenFromCtx(ctx: { req: { headers: { authorization?: string; cookie?: string } } }): string | undefined {
+  const authHeader = ctx.req.headers.authorization;
+  if (authHeader && authHeader.startsWith("Bearer ")) return authHeader.slice(7);
+  const cookieHeader = ctx.req.headers.cookie;
+  const cookies = cookieHeader ? parseCookies(cookieHeader) : {};
+  return cookies[LOCAL_AUTH_COOKIE];
+}
+
+// ===== Admin Router =====
+const adminRouter = router({
+  // جلب جميع المستخدمين
+  getUsers: publicProcedure.mutation(async ({ ctx }) => {
+    const token = getLocalTokenFromCtx(ctx);
+    if (!token) throw new TRPCError({ code: "UNAUTHORIZED" });
+    const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED" }); });
+    const userId = Number(payload.sub);
+    const me = await getLocalUserById(userId);
+    if (!me || me.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح لك" });
+    return getAllLocalUsers();
+  }),
+
+  // تفعيل/تعطيل حساب
+  setActive: publicProcedure
+    .input(z.object({ userId: z.number(), isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const token = getLocalTokenFromCtx(ctx);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED" }); });
+      const adminId = Number(payload.sub);
+      const me = await getLocalUserById(adminId);
+      if (!me || me.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (input.userId === adminId) throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكنك تعطيل حسابك" });
+      await setUserActive(input.userId, input.isActive);
+      return { success: true };
+    }),
+
+  // تغيير دور المستخدم
+  setRole: publicProcedure
+    .input(z.object({ userId: z.number(), role: z.enum(["admin", "user"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const token = getLocalTokenFromCtx(ctx);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED" }); });
+      const adminId = Number(payload.sub);
+      const me = await getLocalUserById(adminId);
+      if (!me || me.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (input.userId === adminId) throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكنك تغيير دورك" });
+      await setUserRole(input.userId, input.role);
+      return { success: true };
+    }),
+
+  // إعادة تعيين كلمة المرور
+  resetPassword: publicProcedure
+    .input(z.object({ userId: z.number(), newPassword: z.string().min(6) }))
+    .mutation(async ({ ctx, input }) => {
+      const token = getLocalTokenFromCtx(ctx);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED" }); });
+      const adminId = Number(payload.sub);
+      const me = await getLocalUserById(adminId);
+      if (!me || me.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const newHash = await bcrypt.hash(input.newPassword, 10);
+      await adminResetPassword(input.userId, newHash);
+      return { success: true };
+    }),
+
+  // حذف مستخدم
+  deleteUser: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const token = getLocalTokenFromCtx(ctx);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED" }); });
+      const adminId = Number(payload.sub);
+      const me = await getLocalUserById(adminId);
+      if (!me || me.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      if (input.userId === adminId) throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكنك حذف حسابك" });
+      await deleteLocalUser(input.userId);
+      return { success: true };
+    }),
+});
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -1530,6 +1618,7 @@ export const appRouter = router({
   quizizz: quizizzRouter,
   wheel: wheelRouter,
   localAuth: localAuthRouter,
+  admin: adminRouter,
 });
 // dummy placeholder to avoid unused import warning
 export type AppRouter = typeof appRouter;
