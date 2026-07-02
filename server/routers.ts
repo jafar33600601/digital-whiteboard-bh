@@ -1161,7 +1161,8 @@ const localAuthRouter = router({
     .mutation(async ({ ctx, input }) => {
       const user = await getLocalUserByEmail(input.email);
       if (!user) throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
-      // لا يشترط التحقق من الإيميل
+      // التحقق من أن الحساب غير معطّل
+      if (user.isActive === 0) throw new TRPCError({ code: "FORBIDDEN", message: "هذا الحساب معطّل. تواصل مع المدير." });
       const valid = await bcrypt.compare(input.password, user.passwordHash);
       if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
       const token = await new SignJWT({ sub: String(user.id), type: "local" })
