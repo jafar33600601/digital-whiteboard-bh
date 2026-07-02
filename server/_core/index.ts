@@ -93,6 +93,8 @@ async function ensureDbSchema() {
         CONSTRAINT \`local_users_id\` PRIMARY KEY(\`id\`),
         CONSTRAINT \`local_users_email_unique\` UNIQUE(\`email\`)
       )`,
+      `ALTER TABLE \`local_users\` ADD COLUMN \`isVerified\` int NOT NULL DEFAULT 0`,
+      `ALTER TABLE \`local_users\` ADD COLUMN \`isActive\` int NOT NULL DEFAULT 1`,
     ];
 
     for (const sql of alterStatements) {
