@@ -1,4 +1,4 @@
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress, classrooms, classroomStudents, wheelQuestions, type InsertClassroom, type InsertClassroomStudent, type InsertWheelQuestion, localUsers, emailVerifications } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -713,15 +713,42 @@ export async function updateLocalUserPassword(id: number, passwordHash: string) 
 export async function getAllLocalUsers() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.select({
+  // جلب بيانات المستخدمين مع عدد الصور لكل مستخدم
+  const usersList = await db.select({
     id: localUsers.id,
     name: localUsers.name,
     email: localUsers.email,
     role: localUsers.role,
     isVerified: localUsers.isVerified,
     isActive: localUsers.isActive,
+    lastActiveAt: localUsers.lastActiveAt,
     createdAt: localUsers.createdAt,
   }).from(localUsers).orderBy(localUsers.createdAt);
+
+  // حساب عدد الصور لكل مستخدم (من quiz_questions + padlet_cards)
+  const quizImageCounts = await db
+    .select({ teacherId: quizzes.teacherId, count: sql<number>`COUNT(${quizQuestions.imageUrl})` })
+    .from(quizQuestions)
+    .innerJoin(quizzes, eq(quizQuestions.quizId, quizzes.id))
+    .where(sql`${quizQuestions.imageUrl} IS NOT NULL AND ${quizQuestions.imageUrl} != ''`)
+    .groupBy(quizzes.teacherId);
+
+  const padletImageCounts = await db
+    .select({ teacherId: padletBoards.teacherId, count: sql<number>`COUNT(${padletCards.imageUrl})` })
+    .from(padletCards)
+    .innerJoin(padletBoards, eq(padletCards.boardId, padletBoards.id))
+    .where(sql`${padletCards.imageUrl} IS NOT NULL AND ${padletCards.imageUrl} != ''`)
+    .groupBy(padletBoards.teacherId);
+
+  const imageCountMap: Record<number, number> = {};
+  for (const row of quizImageCounts) {
+    imageCountMap[row.teacherId] = (imageCountMap[row.teacherId] ?? 0) + Number(row.count);
+  }
+  for (const row of padletImageCounts) {
+    imageCountMap[row.teacherId] = (imageCountMap[row.teacherId] ?? 0) + Number(row.count);
+  }
+
+  return usersList.map(u => ({ ...u, imageCount: imageCountMap[u.id] ?? 0 }));
 }
 
 export async function setUserActive(id: number, isActive: boolean) {
@@ -746,4 +773,10 @@ export async function deleteLocalUser(id: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   await db.delete(localUsers).where(eq(localUsers.id, id));
+}
+
+export async function updateLastActive(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(localUsers).set({ lastActiveAt: new Date() }).where(eq(localUsers.id, id));
 }

@@ -95,6 +95,7 @@ async function ensureDbSchema() {
       )`,
       `ALTER TABLE \`local_users\` ADD COLUMN \`isVerified\` int NOT NULL DEFAULT 0`,
       `ALTER TABLE \`local_users\` ADD COLUMN \`isActive\` int NOT NULL DEFAULT 1`,
+      `ALTER TABLE \`local_users\` ADD COLUMN \`lastActiveAt\` timestamp`,
     ];
 
     for (const sql of alterStatements) {

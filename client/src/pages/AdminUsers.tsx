@@ -23,6 +23,8 @@ type User = {
   role: "admin" | "user";
   isVerified: number;
   isActive: number;
+  lastActiveAt: Date | null;
+  imageCount: number;
   createdAt: Date;
 };
 
@@ -206,6 +208,8 @@ export default function AdminUsers() {
                     <th className="text-center px-4 py-3 font-semibold text-slate-600">الدور</th>
                     <th className="text-center px-4 py-3 font-semibold text-slate-600">الحالة</th>
                     <th className="text-right px-4 py-3 font-semibold text-slate-600">تاريخ التسجيل</th>
+                    <th className="text-right px-4 py-3 font-semibold text-slate-600">آخر نشاط</th>
+                    <th className="text-center px-4 py-3 font-semibold text-slate-600">صور</th>
                     <th className="text-center px-4 py-3 font-semibold text-slate-600">الإجراءات</th>
                   </tr>
                 </thead>
@@ -233,6 +237,24 @@ export default function AdminUsers() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(u.createdAt)}</td>
+                      <td className="px-4 py-3 text-slate-400 text-xs">
+                        {u.lastActiveAt ? (
+                          <span title={formatDate(u.lastActiveAt)} className="text-green-600 font-medium">
+                            {formatDate(u.lastActiveAt)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">لم يسجل دخول</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {u.imageCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                            🖼️ {u.imageCount}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 text-xs">0</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         {u.id !== user?.id ? (
                           <div className="flex items-center justify-center gap-1">

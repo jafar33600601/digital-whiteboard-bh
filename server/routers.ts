@@ -96,6 +96,7 @@ import {
   setUserRole,
   adminResetPassword,
   deleteLocalUser,
+  updateLastActive,
 } from "./db";
 import { sendVerificationEmail } from "./email";
 import { storagePut } from "./storage";
@@ -1193,6 +1194,8 @@ const localAuthRouter = router({
         const userId = Number(payload.sub);
         const user = await getLocalUserById(userId);
         if (!user) return null;
+        // تحديث آخر نشاط بشكل غير متزامن (لا ننتظر)
+        updateLastActive(userId).catch(() => {});
         return { id: user.id, name: user.name, email: user.email, role: user.role };
       } catch {
         return null;
