@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { setLocalToken } from "../lib/localToken";
@@ -12,6 +13,7 @@ export default function LocalLogin() {
   const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const loginMutation = trpc.localAuth.login.useMutation({
     onSuccess: (data) => {
@@ -76,16 +78,26 @@ export default function LocalLogin() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">كلمة المرور</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="text-right"
-                  autoComplete="current-password"
-                  disabled={loginMutation.isPending}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="text-right pr-10"
+                    autoComplete="current-password"
+                    disabled={loginMutation.isPending}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <Button
                 type="submit"

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLocalToken } from "@/lib/localToken";
@@ -22,6 +23,11 @@ export default function Profile() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
+
+  // إظهار/إخفاء كلمات المرور
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // تعبئة البيانات عند التحميل
   const meQuery = trpc.localAuth.me.useQuery(undefined, {
@@ -213,44 +219,74 @@ export default function Profile() {
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">كلمة المرور الحالية</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="text-right"
-                  autoComplete="current-password"
-                  disabled={changePasswordMutation.isPending}
-                />
+                <div className="relative">
+                  <Input
+                    id="currentPassword"
+                    type={showCurrent ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="text-right pr-10"
+                    autoComplete="current-password"
+                    disabled={changePasswordMutation.isPending}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrent(!showCurrent)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <Separator />
               <div className="space-y-2">
                 <Label htmlFor="newPassword">كلمة المرور الجديدة</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="text-right"
-                  autoComplete="new-password"
-                  disabled={changePasswordMutation.isPending}
-                />
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={showNew ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="text-right pr-10"
+                    autoComplete="new-password"
+                    disabled={changePasswordMutation.isPending}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNew(!showNew)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 <p className="text-xs text-gray-400">6 أحرف على الأقل</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmNewPassword">تأكيد كلمة المرور الجديدة</Label>
-                <Input
-                  id="confirmNewPassword"
-                  type="password"
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="text-right"
-                  autoComplete="new-password"
-                  disabled={changePasswordMutation.isPending}
-                />
+                <div className="relative">
+                  <Input
+                    id="confirmNewPassword"
+                    type={showConfirm ? "text" : "password"}
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="text-right pr-10"
+                    autoComplete="new-password"
+                    disabled={changePasswordMutation.isPending}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {/* مؤشر قوة كلمة المرور */}
