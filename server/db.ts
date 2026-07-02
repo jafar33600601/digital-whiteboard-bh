@@ -804,7 +804,7 @@ export async function createContactMessage(data: {
 export async function getAllContactMessages() {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  return db.select().from(contactMessages).orderBy(sql`${contactMessages.createdAt} DESC`);
+  return db.select().from(contactMessages).orderBy(sql`${contactMessages.createdAt} ASC`);
 }
 
 export async function getContactMessageById(id: number) {
@@ -841,5 +841,5 @@ export async function getUserMessages(userId: number) {
   if (!db) throw new Error("Database not available");
   return db.select().from(contactMessages)
     .where(eq(contactMessages.userId, userId))
-    .orderBy(sql`${contactMessages.createdAt} DESC`);
+    .orderBy(sql`${contactMessages.createdAt} ASC`);
 }
