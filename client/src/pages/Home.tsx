@@ -17,6 +17,7 @@ export default function Home() {
       navigate("/login");
     }
   };
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -202,54 +203,72 @@ export default function Home() {
           </div>
 
           {isAuthenticated ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {/* أزرار الحاسب */}
               {user?.role === "admin" && (
                 <div className="hidden sm:flex items-center gap-2">
-                  <button
-                    onClick={() => navigate("/admin/users")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-xl transition-all"
-                    title="لوحة تحكم المستخدمين"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
+                  <button onClick={() => navigate("/admin/users")} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-xl transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                     <span>المستخدمون</span>
                   </button>
-                  <button
-                    onClick={() => navigate("/admin/messages")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 border border-purple-200 rounded-xl transition-all relative"
-                    title="صندوق الرسائل"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
+                  <button onClick={() => navigate("/admin/messages")} className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 border border-purple-200 rounded-xl transition-all">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     <span>الرسائل</span>
                   </button>
                 </div>
               )}
-              <button
-                onClick={() => navigate("/profile")}
-                className="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5 hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
-                title="الملف الشخصي"
-              >
-                <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                  {user?.name?.charAt(0) || "م"}
-                </div>
+              <button onClick={() => navigate("/profile")} className="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5 hover:bg-indigo-50 hover:border-indigo-200 transition-colors">
+                <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">{user?.name?.charAt(0) || "م"}</div>
                 <span className="text-sm font-medium text-slate-700">{user?.name}</span>
               </button>
-              <button
-                onClick={handleLogout}
-                disabled={logoutLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all disabled:opacity-50"
-                title="تسجيل الخروج"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                  <polyline points="16 17 21 12 16 7" />
-                  <line x1="21" y1="12" x2="9" y2="12" />
-                </svg>
-                <span className="hidden sm:inline">{logoutLoading ? "..." : "خروج"}</span>
+              <button onClick={handleLogout} disabled={logoutLoading} className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-xl transition-all disabled:opacity-50">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+                <span>خروج</span>
               </button>
+
+              {/* زر القائمة للهاتف */}
+              <div className="relative sm:hidden">
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="flex items-center gap-1.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    {user?.name?.charAt(0) || "م"}
+                  </div>
+                  <svg className={`w-4 h-4 text-slate-600 transition-transform ${mobileMenuOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+
+                {mobileMenuOpen && (
+                  <div className="absolute left-0 top-12 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 min-w-[200px]" dir="rtl">
+                    <div className="px-4 py-2 border-b border-slate-100">
+                      <p className="font-semibold text-slate-800 text-sm">{user?.name}</p>
+                      <p className="text-xs text-slate-500">{user?.email}</p>
+                    </div>
+                    <button onClick={() => { navigate("/profile"); setMobileMenuOpen(false); }} className="w-full text-right px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                      الملف الشخصي
+                    </button>
+                    {user?.role === "admin" && (
+                      <>
+                        <button onClick={() => { navigate("/admin/users"); setMobileMenuOpen(false); }} className="w-full text-right px-4 py-2.5 text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                          المستخدمون
+                        </button>
+                        <button onClick={() => { navigate("/admin/messages"); setMobileMenuOpen(false); }} className="w-full text-right px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50 flex items-center gap-2">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                          الرسائل
+                        </button>
+                      </>
+                    )}
+                    <div className="border-t border-slate-100 mt-1">
+                      <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} disabled={logoutLoading} className="w-full text-right px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 disabled:opacity-50">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        {logoutLoading ? "جاري الخروج..." : "تسجيل الخروج"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <button
