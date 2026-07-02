@@ -1095,8 +1095,15 @@ const localAuthRouter = router({
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 دقائق
       await createEmailVerification(input.email, code, expiresAt);
-      await sendVerificationEmail(input.email, code, input.name);
-      return { success: true, requiresVerification: true, email: input.email };
+      // إرسال الإيميل بدون انتظار - لا نوقف التسجيل إذا فشل الإيميل
+      const emailSent = await Promise.race([
+        sendVerificationEmail(input.email, code, input.name),
+        new Promise<boolean>(resolve => setTimeout(() => resolve(false), 8000)),
+      ]);
+      if (!emailSent) {
+        console.warn(`[Auth] Email sending failed or timed out for ${input.email}, code: ${code}`);
+      }
+      return { success: true, requiresVerification: true, email: input.email, emailSent };
     }),
 
   // التحقق من رمز البريد الإلكتروني
@@ -1137,8 +1144,14 @@ const localAuthRouter = router({
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       await createEmailVerification(input.email, code, expiresAt);
-      await sendVerificationEmail(input.email, code, user.name);
-      return { success: true };
+      const emailSent = await Promise.race([
+        sendVerificationEmail(input.email, code, user.name),
+        new Promise<boolean>(resolve => setTimeout(() => resolve(false), 8000)),
+      ]);
+      if (!emailSent) {
+        console.warn(`[Auth] Resend email failed or timed out for ${input.email}, code: ${code}`);
+      }
+      return { success: true, emailSent };
     }),
   // تسجيل الدخول
   login: publicProcedure

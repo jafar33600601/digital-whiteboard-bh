@@ -23,7 +23,11 @@ export default function LocalRegister() {
     onSuccess: (data) => {
       setPendingEmail(data.email);
       setStep("verify");
-      toast.success("تم إرسال رمز التحقق إلى بريدك الإلكتروني");
+      if (data.emailSent === false) {
+        toast.warning("تعذّر إرسال الإيميل تلقائياً. يرجى التواصل مع الإدارة للحصول على رمز التحقق.");
+      } else {
+        toast.success("تم إرسال رمز التحقق إلى بريدك الإلكتروني");
+      }
     },
     onError: (err) => {
       if (err.data?.code === "CONFLICT") {
