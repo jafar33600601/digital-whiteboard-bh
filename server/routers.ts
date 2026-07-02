@@ -1365,8 +1365,8 @@ const contactRouter = router({
     .input(z.object({
       senderName: z.string().min(2).max(100),
       senderEmail: z.string().email(),
-      subject: z.string().min(3).max(200),
-      message: z.string().min(10).max(2000),
+      subject: z.string().min(1).max(200),
+      message: z.string().min(1).max(2000),
     }))
     .mutation(async ({ ctx, input }) => {
       // محاولة معرفة هوية المستخدم إذا كان مسجلاً

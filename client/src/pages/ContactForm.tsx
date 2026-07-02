@@ -337,7 +337,6 @@ export default function ContactForm({ onClose, mode = "modal" }: Props) {
                   rows={4}
                   className="w-full rounded-lg border border-[#e9edef] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#128c7e]/30 resize-none"
                   required
-                  minLength={5}
                 />
               </div>
               <button
