@@ -29,6 +29,7 @@ import AdminMessages from "./pages/AdminMessages";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocalAuth } from "./hooks/useLocalAuth";
 import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 
 // الموقع يستخدم نظام تسجيل الدخول المحلي دائماً (local auth only)
 const IS_LOCAL_AUTH = true;
@@ -187,6 +188,13 @@ function Router() {
   );
 }
 
+// يظهر زر التواصل فقط في الصفحة الرئيسية
+function ContactButtonWrapper() {
+  const [location] = useLocation();
+  if (location !== "/") return null;
+  return <ContactButton />;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -194,7 +202,7 @@ function App() {
         <TooltipProvider>
           <Toaster position="top-center" richColors />
           <Router />
-          <ContactButton />
+          <ContactButtonWrapper />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
