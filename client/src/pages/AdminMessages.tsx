@@ -1,13 +1,11 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocalAuth } from "@/hooks/useLocalAuth";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  MessageCircle, Reply, Trash2, Mail, MailOpen,
-  Clock, CheckCircle, ChevronRight, Send, X, Filter
+  MessageCircle, Trash2, Send, ChevronRight,
+  CheckCheck, Clock, Search, MoreVertical
 } from "lucide-react";
 
 type Message = {
@@ -30,8 +28,11 @@ export default function AdminMessages() {
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<Message | null>(null);
   const [replyText, setReplyText] = useState("");
-  const [filter, setFilter] = useState<"all" | "new" | "read" | "replied">("all");
+  const [search, setSearch] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const getAllMutation = trpc.contact.getAll.useMutation({
     onError: (err) => {
@@ -45,268 +46,348 @@ export default function AdminMessages() {
   const markReadMutation = trpc.contact.markRead.useMutation();
   const replyMutation = trpc.contact.reply.useMutation({
     onSuccess: () => {
-      toast.success("تم إرسال الرد بنجاح!");
+      const reply = replyText;
       setReplyText("");
-      // تحديث الرسالة محلياً
       setMessages(prev => prev.map(m =>
         m.id === selected?.id
-          ? { ...m, adminReply: replyText, status: "replied" as const, repliedAt: new Date() }
+          ? { ...m, adminReply: reply, status: "replied" as const, repliedAt: new Date() }
           : m
       ));
-      setSelected(prev => prev ? { ...prev, adminReply: replyText, status: "replied", repliedAt: new Date() } : null);
+      setSelected(prev => prev ? { ...prev, adminReply: reply, status: "replied", repliedAt: new Date() } : null);
     },
     onError: (err) => toast.error(err.message || "فشل الإرسال"),
   });
 
   const deleteMutation = trpc.contact.delete.useMutation({
     onSuccess: () => {
-      toast.success("تم حذف الرسالة");
+      toast.success("تم حذف المحادثة");
       setMessages(prev => prev.filter(m => m.id !== deleteConfirm));
       if (selected?.id === deleteConfirm) setSelected(null);
       setDeleteConfirm(null);
+      setShowMenu(false);
     },
     onError: () => toast.error("فشل الحذف"),
   });
 
-  if (!loaded && isAuthenticated) {
-    setLoaded(true);
-    getAllMutation.mutate(undefined, {
-      onSuccess: (data) => setMessages(data as Message[]),
-    });
-  }
+  useEffect(() => {
+    if (!loaded && isAuthenticated) {
+      setLoaded(true);
+      getAllMutation.mutate(undefined, {
+        onSuccess: (data) => setMessages(data as Message[]),
+      });
+    }
+  }, [isAuthenticated, loaded]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [selected]);
 
   const openMessage = (msg: Message) => {
     setSelected(msg);
-    setReplyText(msg.adminReply || "");
+    setReplyText("");
+    setShowMenu(false);
     if (msg.status === "new") {
       markReadMutation.mutate({ id: msg.id });
       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, status: "read" as const } : m));
     }
   };
 
-  const formatDate = (date: Date) =>
-    new Date(date).toLocaleDateString("ar-BH", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-
-  const filtered = messages.filter(m => filter === "all" ? true : m.status === filter);
-  const newCount = messages.filter(m => m.status === "new").length;
-
-  const statusBadge = (status: string) => {
-    if (status === "replied") return <Badge className="bg-green-100 text-green-700 border-0 text-xs"><CheckCircle className="w-3 h-3 ml-1" />تم الرد</Badge>;
-    if (status === "read") return <Badge className="bg-blue-100 text-blue-700 border-0 text-xs"><MailOpen className="w-3 h-3 ml-1" />مقروءة</Badge>;
-    return <Badge className="bg-amber-100 text-amber-700 border-0 text-xs"><Clock className="w-3 h-3 ml-1" />جديدة</Badge>;
+  const handleSend = () => {
+    if (!replyText.trim() || !selected) return;
+    replyMutation.mutate({ id: selected.id, reply: replyText });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const formatTime = (date: Date) =>
+    new Date(date).toLocaleTimeString("ar-BH", { hour: "2-digit", minute: "2-digit" });
+
+  const formatDate = (date: Date) => {
+    const d = new Date(date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === today.toDateString()) return "اليوم";
+    if (d.toDateString() === yesterday.toDateString()) return "أمس";
+    return d.toLocaleDateString("ar-BH", { year: "numeric", month: "short", day: "numeric" });
+  };
+
+  const formatLastMsg = (date: Date) => {
+    const d = new Date(date);
+    const today = new Date();
+    if (d.toDateString() === today.toDateString())
+      return d.toLocaleTimeString("ar-BH", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("ar-BH", { month: "short", day: "numeric" });
+  };
+
+  const filtered = messages.filter(m =>
+    !search || m.senderName.includes(search) || m.senderEmail.includes(search) || m.subject.includes(search)
+  );
+  const newCount = messages.filter(m => m.status === "new").length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50" dir="rtl">
-      {/* شريط التنقل */}
-      <nav className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/")} className="text-gray-400 hover:text-gray-600 transition-colors" title="العودة">
-            <ChevronRight className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center relative">
-              <MessageCircle className="w-4 h-4 text-white" />
-              {newCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                  {newCount}
-                </span>
-              )}
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-slate-800">صندوق الرسائل</h1>
-              <p className="text-xs text-slate-500">{messages.length} رسالة {newCount > 0 && `• ${newCount} جديدة`}</p>
-            </div>
-          </div>
+    <div className="h-screen flex flex-col bg-[#f0f2f5]" dir="rtl">
+      {/* شريط التنقل العلوي */}
+      <div className="bg-[#128c7e] text-white px-4 py-3 flex items-center gap-3 shadow-md flex-shrink-0">
+        <button onClick={() => navigate("/")} className="hover:bg-white/10 p-1 rounded-full transition-colors">
+          <ChevronRight className="w-5 h-5" />
+        </button>
+        <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
+          <MessageCircle className="w-5 h-5" />
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { setLoaded(false); }}
-            className="text-xs text-indigo-600 hover:text-indigo-800 border border-indigo-200 rounded-lg px-3 py-1.5 hover:bg-indigo-50 transition-colors"
-          >
-            تحديث
-          </button>
-          <div className="flex items-center gap-1 bg-indigo-50 border border-indigo-200 rounded-full px-3 py-1.5">
-            <div className="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
-              {user?.name?.charAt(0) || "م"}
-            </div>
-            <span className="text-sm font-medium text-indigo-700">{user?.name}</span>
-          </div>
+        <div className="flex-1">
+          <h1 className="font-bold text-base">صندوق الرسائل</h1>
+          <p className="text-xs text-white/70">
+            {messages.length} محادثة {newCount > 0 && `• ${newCount} جديدة`}
+          </p>
         </div>
-      </nav>
+        <button
+          onClick={() => { setLoaded(false); }}
+          className="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full transition-colors"
+        >
+          تحديث
+        </button>
+      </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* إحصائيات */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          {[
-            { label: "الكل", count: messages.length, color: "indigo", f: "all" },
-            { label: "جديدة", count: messages.filter(m => m.status === "new").length, color: "amber", f: "new" },
-            { label: "مقروءة", count: messages.filter(m => m.status === "read").length, color: "blue", f: "read" },
-            { label: "تم الرد", count: messages.filter(m => m.status === "replied").length, color: "green", f: "replied" },
-          ].map(({ label, count, color, f }) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f as typeof filter)}
-              className={`bg-white rounded-xl p-3 shadow-sm border text-center transition-all ${filter === f ? `border-${color}-300 ring-2 ring-${color}-100` : "border-slate-100 hover:border-slate-200"}`}
-            >
-              <p className={`text-2xl font-bold text-${color}-600`}>{count}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-4 h-[calc(100vh-260px)]">
-          {/* قائمة الرسائل */}
-          <div className="w-80 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-            <div className="p-3 border-b border-slate-100 flex items-center gap-2">
-              <Filter className="w-4 h-4 text-slate-400" />
-              <span className="text-sm font-medium text-slate-600">{filtered.length} رسالة</span>
-            </div>
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
-              {getAllMutation.isPending ? (
-                <div className="flex justify-center py-8">
-                  <span className="animate-spin w-6 h-6 border-2 border-indigo-300 border-t-indigo-600 rounded-full" />
-                </div>
-              ) : filtered.length === 0 ? (
-                <div className="text-center py-8">
-                  <Mail className="w-10 h-10 text-slate-200 mx-auto mb-2" />
-                  <p className="text-sm text-slate-400">لا توجد رسائل</p>
-                </div>
-              ) : (
-                filtered.map((msg) => (
-                  <button
-                    key={msg.id}
-                    onClick={() => openMessage(msg)}
-                    className={`w-full text-right p-3 hover:bg-slate-50 transition-colors ${selected?.id === msg.id ? "bg-indigo-50 border-r-2 border-indigo-500" : ""} ${msg.status === "new" ? "bg-amber-50/50" : ""}`}
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <span className={`text-sm font-medium truncate flex-1 ${msg.status === "new" ? "text-slate-900" : "text-slate-600"}`}>
-                        {msg.senderName}
-                      </span>
-                      {msg.status === "new" && <span className="w-2 h-2 bg-amber-500 rounded-full mt-1.5 flex-shrink-0" />}
-                    </div>
-                    <p className="text-xs text-slate-500 truncate mb-1">{msg.subject}</p>
-                    <p className="text-xs text-slate-300">{formatDate(msg.createdAt)}</p>
-                  </button>
-                ))
-              )}
+      <div className="flex flex-1 overflow-hidden">
+        {/* قائمة المحادثات - يسار */}
+        <div className="w-[340px] bg-white flex flex-col border-l border-[#e9edef] flex-shrink-0">
+          {/* بحث */}
+          <div className="p-2 bg-[#f0f2f5]">
+            <div className="flex items-center gap-2 bg-white rounded-full px-3 py-2">
+              <Search className="w-4 h-4 text-[#54656f]" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="بحث أو بدء محادثة جديدة"
+                className="flex-1 text-sm outline-none bg-transparent text-[#111b21] placeholder:text-[#8696a0]"
+              />
             </div>
           </div>
 
-          {/* محتوى الرسالة */}
-          <div className="flex-1 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
-            {!selected ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-4">
-                  <MessageCircle className="w-10 h-10 text-indigo-300" />
-                </div>
-                <h3 className="font-semibold text-slate-600 mb-2">اختر رسالة للعرض</h3>
-                <p className="text-sm text-slate-400">اضغط على أي رسالة من القائمة لعرض تفاصيلها والرد عليها</p>
+          {/* قائمة */}
+          <div className="flex-1 overflow-y-auto">
+            {getAllMutation.isPending ? (
+              <div className="flex justify-center py-8">
+                <span className="animate-spin w-6 h-6 border-2 border-[#128c7e] border-t-transparent rounded-full" />
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-12">
+                <MessageCircle className="w-12 h-12 text-[#d1d7db] mx-auto mb-3" />
+                <p className="text-sm text-[#8696a0]">لا توجد رسائل</p>
               </div>
             ) : (
-              <>
-                {/* رأس الرسالة */}
-                <div className="p-4 border-b border-slate-100 flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h2 className="font-bold text-slate-800">{selected.subject}</h2>
-                      {statusBadge(selected.status)}
+              filtered.map((msg) => (
+                <button
+                  key={msg.id}
+                  onClick={() => openMessage(msg)}
+                  className={`w-full text-right px-4 py-3 hover:bg-[#f5f6f6] transition-colors border-b border-[#e9edef] ${selected?.id === msg.id ? "bg-[#f0f2f5]" : ""}`}
+                >
+                  <div className="flex items-center gap-3">
+                    {/* صورة المرسل */}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 ${
+                      msg.status === "new" ? "bg-[#25d366]" : "bg-[#128c7e]"
+                    }`}>
+                      {msg.senderName.charAt(0)}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <div className="w-5 h-5 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold text-xs">
-                          {selected.senderName.charAt(0)}
-                        </div>
-                        {selected.senderName}
-                      </span>
-                      <span className="text-slate-300">•</span>
-                      <span>{selected.senderEmail}</span>
-                      <span className="text-slate-300">•</span>
-                      <span>{formatDate(selected.createdAt)}</span>
-                      {selected.userId && <Badge variant="outline" className="text-xs">مستخدم مسجل</Badge>}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setDeleteConfirm(selected.id)}
-                    className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
-                    title="حذف الرسالة"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* نص الرسالة */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{selected.message}</p>
-                  </div>
-
-                  {/* الرد السابق */}
-                  {selected.adminReply && (
-                    <div className="bg-green-50 border border-green-100 rounded-xl p-4">
-                      <div className="flex items-center gap-2 text-green-700 text-sm font-medium mb-2">
-                        <Reply className="w-4 h-4" />
-                        ردّك على هذه الرسالة
-                        {selected.repliedAt && <span className="text-green-400 font-normal text-xs">• {formatDate(selected.repliedAt)}</span>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className={`text-sm font-semibold truncate ${msg.status === "new" ? "text-[#111b21]" : "text-[#111b21]"}`}>
+                          {msg.senderName}
+                        </span>
+                        <span className={`text-xs flex-shrink-0 mr-1 ${msg.status === "new" ? "text-[#25d366] font-medium" : "text-[#667781]"}`}>
+                          {formatLastMsg(msg.createdAt)}
+                        </span>
                       </div>
-                      <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{selected.adminReply}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-[#667781] truncate flex-1">{msg.subject}</span>
+                        {msg.status === "new" && (
+                          <span className="w-5 h-5 bg-[#25d366] text-white text-xs rounded-full flex items-center justify-center font-bold flex-shrink-0 mr-1">
+                            1
+                          </span>
+                        )}
+                        {msg.status === "replied" && (
+                          <CheckCheck className="w-4 h-4 text-[#53bdeb] flex-shrink-0 mr-1" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* منطقة المحادثة - يمين */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {!selected ? (
+            /* شاشة الترحيب */
+            <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5]">
+              <div className="w-24 h-24 bg-[#128c7e]/10 rounded-full flex items-center justify-center mb-6">
+                <MessageCircle className="w-12 h-12 text-[#128c7e]" />
+              </div>
+              <h2 className="text-2xl font-light text-[#41525d] mb-2">صندوق رسائل المدير</h2>
+              <p className="text-sm text-[#667781] text-center max-w-xs">
+                اختر محادثة من القائمة على اليسار للرد عليها
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* رأس المحادثة */}
+              <div className="bg-[#f0f2f5] px-4 py-3 flex items-center gap-3 border-b border-[#e9edef] flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-[#128c7e] flex items-center justify-center text-white font-bold">
+                  {selected.senderName.charAt(0)}
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-[#111b21] text-sm">{selected.senderName}</p>
+                  <p className="text-xs text-[#667781]">{selected.senderEmail}</p>
+                </div>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="p-2 hover:bg-[#e9edef] rounded-full transition-colors"
+                  >
+                    <MoreVertical className="w-5 h-5 text-[#54656f]" />
+                  </button>
+                  {showMenu && (
+                    <div className="absolute left-0 top-10 bg-white shadow-lg rounded-lg py-1 z-10 w-40">
+                      <button
+                        onClick={() => setDeleteConfirm(selected.id)}
+                        className="w-full text-right px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        حذف المحادثة
+                      </button>
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* منطقة الرد */}
-                <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-                  <div className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-2">
-                    <Reply className="w-4 h-4 text-indigo-500" />
-                    {selected.adminReply ? "تعديل الرد" : "الرد على الرسالة"}
-                  </div>
-                  <textarea
-                    value={replyText}
-                    onChange={e => setReplyText(e.target.value)}
-                    placeholder="اكتب ردّك هنا..."
-                    rows={3}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
-                  />
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-slate-400">{replyText.length}/2000</span>
-                    <Button
-                      size="sm"
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                      disabled={!replyText.trim() || replyMutation.isPending}
-                      onClick={() => replyMutation.mutate({ id: selected.id, reply: replyText })}
-                    >
-                      {replyMutation.isPending ? (
-                        <span className="flex items-center gap-1.5"><span className="animate-spin w-3 h-3 border-2 border-white/30 border-t-white rounded-full" />جاري الإرسال</span>
+              {/* خلفية المحادثة */}
+              <div
+                className="flex-1 overflow-y-auto p-4 space-y-1"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5ddd5'/%3E%3C/svg%3E")`,
+                  backgroundColor: "#e5ddd5"
+                }}
+                onClick={() => setShowMenu(false)}
+              >
+                {/* تاريخ */}
+                <div className="flex justify-center my-2">
+                  <span className="bg-white/80 text-[#54656f] text-xs px-3 py-1 rounded-full shadow-sm">
+                    {formatDate(selected.createdAt)}
+                  </span>
+                </div>
+
+                {/* رسالة الموضوع */}
+                <div className="flex justify-end mb-1">
+                  <div className="bg-[#d9fdd3] rounded-lg rounded-tr-none px-3 py-2 max-w-[70%] shadow-sm">
+                    <p className="text-xs text-[#128c7e] font-semibold mb-1">📌 {selected.subject}</p>
+                    <p className="text-sm text-[#111b21] whitespace-pre-wrap leading-relaxed">{selected.message}</p>
+                    <div className="flex items-center justify-end gap-1 mt-1">
+                      <span className="text-xs text-[#667781]">{formatTime(selected.createdAt)}</span>
+                      {selected.status === "replied" ? (
+                        <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+                      ) : selected.status === "read" ? (
+                        <CheckCheck className="w-3.5 h-3.5 text-[#667781]" />
                       ) : (
-                        <span className="flex items-center gap-1.5"><Send className="w-3.5 h-3.5" />إرسال الرد</span>
+                        <Clock className="w-3 h-3 text-[#667781]" />
                       )}
-                    </Button>
+                    </div>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
+
+                {/* رد المدير */}
+                {selected.adminReply && (
+                  <>
+                    {selected.repliedAt && new Date(selected.repliedAt).toDateString() !== new Date(selected.createdAt).toDateString() && (
+                      <div className="flex justify-center my-2">
+                        <span className="bg-white/80 text-[#54656f] text-xs px-3 py-1 rounded-full shadow-sm">
+                          {formatDate(selected.repliedAt)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-start">
+                      <div className="bg-white rounded-lg rounded-tl-none px-3 py-2 max-w-[70%] shadow-sm">
+                        <p className="text-xs text-[#128c7e] font-semibold mb-1">{user?.name || "المدير"}</p>
+                        <p className="text-sm text-[#111b21] whitespace-pre-wrap leading-relaxed">{selected.adminReply}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          <span className="text-xs text-[#667781]">
+                            {selected.repliedAt ? formatTime(selected.repliedAt) : ""}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* منطقة الكتابة */}
+              <div className="bg-[#f0f2f5] px-3 py-2 flex items-end gap-2 flex-shrink-0">
+                <textarea
+                  ref={textareaRef}
+                  value={replyText}
+                  onChange={e => {
+                    setReplyText(e.target.value);
+                    e.target.style.height = "auto";
+                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="اكتب رسالتك..."
+                  rows={1}
+                  className="flex-1 bg-white rounded-2xl px-4 py-2.5 text-sm text-[#111b21] outline-none resize-none placeholder:text-[#8696a0] max-h-[120px] overflow-y-auto"
+                  style={{ minHeight: "42px" }}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={!replyText.trim() || replyMutation.isPending}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
+                    replyText.trim()
+                      ? "bg-[#128c7e] hover:bg-[#0a7566] text-white shadow-md"
+                      : "bg-[#d1d7db] text-[#8696a0] cursor-not-allowed"
+                  }`}
+                >
+                  {replyMutation.isPending ? (
+                    <span className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
+                  ) : (
+                    <Send className="w-4 h-4 -scale-x-100" />
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* نافذة تأكيد الحذف */}
       {deleteConfirm !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl p-6 shadow-xl max-w-sm w-full mx-4" dir="rtl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full mx-4" dir="rtl">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Trash2 className="w-6 h-6 text-red-500" />
             </div>
-            <h3 className="font-bold text-slate-800 text-center mb-2">حذف الرسالة؟</h3>
-            <p className="text-sm text-slate-500 text-center mb-4">لا يمكن التراجع عن هذا الإجراء.</p>
+            <h3 className="font-bold text-[#111b21] text-center mb-2">حذف المحادثة؟</h3>
+            <p className="text-sm text-[#667781] text-center mb-4">لا يمكن التراجع عن هذا الإجراء.</p>
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(null)}>إلغاء</Button>
-              <Button
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              <button
+                onClick={() => { setDeleteConfirm(null); setShowMenu(false); }}
+                className="flex-1 py-2 border border-[#e9edef] rounded-xl text-sm text-[#111b21] hover:bg-[#f5f6f6] transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm transition-colors disabled:opacity-50"
                 disabled={deleteMutation.isPending}
                 onClick={() => deleteMutation.mutate({ id: deleteConfirm })}
               >
                 {deleteMutation.isPending ? "جاري الحذف..." : "حذف"}
-              </Button>
+              </button>
             </div>
           </div>
         </div>
