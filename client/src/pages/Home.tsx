@@ -203,12 +203,16 @@ export default function Home() {
 
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5">
+              <button
+                onClick={() => navigate("/profile")}
+                className="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-3 py-1.5 hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                title="الملف الشخصي"
+              >
                 <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
                   {user?.name?.charAt(0) || "م"}
                 </div>
                 <span className="text-sm font-medium text-slate-700">{user?.name}</span>
-              </div>
+              </button>
               <button
                 onClick={handleLogout}
                 disabled={logoutLoading}

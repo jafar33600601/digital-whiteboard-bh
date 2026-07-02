@@ -89,6 +89,8 @@ import {
   createEmailVerification,
   getEmailVerification,
   markVerificationUsed,
+  updateLocalUserProfile,
+  updateLocalUserPassword,
 } from "./db";
 import { sendVerificationEmail } from "./email";
 import { storagePut } from "./storage";
@@ -1189,6 +1191,63 @@ const localAuthRouter = router({
       } catch {
         return null;
       }
+    }),
+
+  // تحديث بيانات الملف الشخصي
+  updateProfile: publicProcedure
+    .input(z.object({
+      name: z.string().min(2).max(100),
+      email: z.string().email(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // التحقق من هوية المستخدم عبر التوكن
+      let token: string | undefined;
+      const authHeader = ctx.req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.slice(7);
+      } else {
+        const cookieHeader = ctx.req.headers.cookie;
+        const cookies = cookieHeader ? parseCookies(cookieHeader) : {};
+        token = cookies[LOCAL_AUTH_COOKIE];
+      }
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED", message: "غير مصرح" });
+      const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED", message: "جلسة غير صالحة" }); });
+      const userId = Number(payload.sub);
+      // التحقق من عدم وجود بريد مستخدم آخر
+      const emailOwner = await getLocalUserByEmail(input.email);
+      if (emailOwner && emailOwner.id !== userId) {
+        throw new TRPCError({ code: "CONFLICT", message: "هذا البريد مستخدم من حساب آخر" });
+      }
+      await updateLocalUserProfile(userId, input.name, input.email);
+      return { success: true };
+    }),
+
+  // تغيير كلمة المرور
+  changePassword: publicProcedure
+    .input(z.object({
+      currentPassword: z.string(),
+      newPassword: z.string().min(6),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      let token: string | undefined;
+      const authHeader = ctx.req.headers.authorization;
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.slice(7);
+      } else {
+        const cookieHeader = ctx.req.headers.cookie;
+        const cookies = cookieHeader ? parseCookies(cookieHeader) : {};
+        token = cookies[LOCAL_AUTH_COOKIE];
+      }
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED", message: "غير مصرح" });
+      const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED", message: "جلسة غير صالحة" }); });
+      const userId = Number(payload.sub);
+      const user = await getLocalUserById(userId);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "المستخدم غير موجود" });
+      const valid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+      if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "كلمة المرور الحالية غير صحيحة" });
+      const newHash = await bcrypt.hash(input.newPassword, 10);
+      await updateLocalUserPassword(userId, newHash);
+      return { success: true };
     }),
 
   // تسجيل الخروج

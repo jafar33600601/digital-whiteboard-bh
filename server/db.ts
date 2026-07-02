@@ -695,3 +695,15 @@ export async function markVerificationUsed(id: number) {
   if (!db) throw new Error("Database not available");
   await db.update(emailVerifications).set({ used: 1 }).where(eq(emailVerifications.id, id));
 }
+
+export async function updateLocalUserProfile(id: number, name: string, email: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(localUsers).set({ name, email }).where(eq(localUsers.id, id));
+}
+
+export async function updateLocalUserPassword(id: number, passwordHash: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(localUsers).set({ passwordHash }).where(eq(localUsers.id, id));
+}

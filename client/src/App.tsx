@@ -21,6 +21,7 @@ import QuizizzStudent from "./pages/QuizizzStudent";
 import SpinnerWheel from "./pages/SpinnerWheel";
 import LocalLogin from "./pages/LocalLogin";
 import LocalRegister from "./pages/LocalRegister";
+import Profile from "./pages/Profile";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocalAuth } from "./hooks/useLocalAuth";
 import { trpc } from "@/lib/trpc";
@@ -172,6 +173,7 @@ function Router() {
       <Route path="/spinner-wheel" component={() => <SpinnerWheel />} />
       <Route path="/login" component={LocalLogin} />
       <Route path="/register" component={LocalRegister} />
+      <Route path="/profile" component={Profile} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
