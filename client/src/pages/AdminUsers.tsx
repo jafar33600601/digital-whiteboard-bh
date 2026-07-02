@@ -240,10 +240,10 @@ export default function AdminUsers() {
                             <button
                               onClick={() => setActiveMutation.mutate({ userId: u.id, isActive: u.isActive === 0 })}
                               disabled={setActiveMutation.isPending}
-                              className={`p-1.5 rounded-lg transition-colors ${u.isActive === 1 ? "text-orange-500 hover:bg-orange-50" : "text-green-600 hover:bg-green-50"}`}
-                              title={u.isActive === 1 ? "تعطيل الحساب" : "تفعيل الحساب"}
+                              className={`p-1.5 rounded-lg transition-colors ${u.isActive === 0 ? "text-green-600 hover:bg-green-50" : "text-orange-500 hover:bg-orange-50"}`}
+                              title={u.isActive === 0 ? "تفعيل الحساب" : "تعطيل الحساب"}
                             >
-                              {u.isActive === 1 ? <ShieldOff className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+                              {u.isActive === 0 ? <Shield className="w-4 h-4" /> : <ShieldOff className="w-4 h-4" />}
                             </button>
 
                             {/* تغيير الدور */}
