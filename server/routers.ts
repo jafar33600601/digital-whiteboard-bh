@@ -97,6 +97,13 @@ import {
   adminResetPassword,
   deleteLocalUser,
   updateLastActive,
+  createContactMessage,
+  getAllContactMessages,
+  getContactMessageById,
+  replyToContactMessage,
+  markContactMessageRead,
+  deleteContactMessage,
+  getUserMessages,
 } from "./db";
 import { sendVerificationEmail } from "./email";
 import { storagePut } from "./storage";
@@ -1351,8 +1358,95 @@ const adminRouter = router({
     }),
 });
 
+// ===== Contact / Messages Router =====
+const contactRouter = router({
+  // إرسال رسالة (متاح للجميع - مسجلين وزوار)
+  send: publicProcedure
+    .input(z.object({
+      senderName: z.string().min(2).max(100),
+      senderEmail: z.string().email(),
+      subject: z.string().min(3).max(200),
+      message: z.string().min(10).max(2000),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // محاولة معرفة هوية المستخدم إذا كان مسجلاً
+      let userId: number | undefined;
+      const token = getLocalTokenFromCtx(ctx);
+      if (token) {
+        try {
+          const { payload } = await jwtVerify(token, getJwtSecret());
+          userId = Number(payload.sub);
+        } catch { /* زائر */ }
+      }
+      await createContactMessage({ ...input, userId });
+      return { success: true };
+    }),
+
+  // جلب رسائل المستخدم الحالي (ردود المدير)
+  myMessages: publicProcedure.query(async ({ ctx }) => {
+    const token = getLocalTokenFromCtx(ctx);
+    if (!token) return [];
+    try {
+      const { payload } = await jwtVerify(token, getJwtSecret());
+      const userId = Number(payload.sub);
+      return getUserMessages(userId);
+    } catch { return []; }
+  }),
+
+  // ===== Admin only =====
+  // جلب جميع الرسائل
+  getAll: publicProcedure.mutation(async ({ ctx }) => {
+    const token = getLocalTokenFromCtx(ctx);
+    if (!token) throw new TRPCError({ code: "UNAUTHORIZED" });
+    const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED" }); });
+    const me = await getLocalUserById(Number(payload.sub));
+    if (!me || me.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    return getAllContactMessages();
+  }),
+
+  // تحديد رسالة كمقروءة
+  markRead: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const token = getLocalTokenFromCtx(ctx);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED" }); });
+      const me = await getLocalUserById(Number(payload.sub));
+      if (!me || me.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      await markContactMessageRead(input.id);
+      return { success: true };
+    }),
+
+  // الرد على رسالة
+  reply: publicProcedure
+    .input(z.object({ id: z.number(), reply: z.string().min(1).max(2000) }))
+    .mutation(async ({ ctx, input }) => {
+      const token = getLocalTokenFromCtx(ctx);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED" }); });
+      const me = await getLocalUserById(Number(payload.sub));
+      if (!me || me.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      await replyToContactMessage(input.id, input.reply);
+      return { success: true };
+    }),
+
+  // حذف رسالة
+  delete: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const token = getLocalTokenFromCtx(ctx);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED" });
+      const { payload } = await jwtVerify(token, getJwtSecret()).catch(() => { throw new TRPCError({ code: "UNAUTHORIZED" }); });
+      const me = await getLocalUserById(Number(payload.sub));
+      if (!me || me.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      await deleteContactMessage(input.id);
+      return { success: true };
+    }),
+});
+
 export const appRouter = router({
   system: systemRouter,
+  contact: contactRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {

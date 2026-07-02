@@ -1,6 +1,6 @@
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress, classrooms, classroomStudents, wheelQuestions, type InsertClassroom, type InsertClassroomStudent, type InsertWheelQuestion, localUsers, emailVerifications } from "../drizzle/schema";
+import { InsertUser, users, whiteboardSessions, studentSubmissions, InsertWhiteboardSession, InsertStudentSubmission, quizzes, quizQuestions, quizSubmissions, InsertQuiz, InsertQuizQuestion, InsertQuizSubmission, liveQuizSessions, InsertLiveQuizSession, padletBoards, padletCards, InsertPadletBoard, InsertPadletCard, bannedIps, quizizzSessions, quizizzProgress, quizizzBanned, type InsertQuizizzSession, type InsertQuizizzProgress, classrooms, classroomStudents, wheelQuestions, type InsertClassroom, type InsertClassroomStudent, type InsertWheelQuestion, localUsers, emailVerifications, contactMessages } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -779,4 +779,67 @@ export async function updateLastActive(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(localUsers).set({ lastActiveAt: new Date() }).where(eq(localUsers.id, id));
+}
+
+// ===== Contact Messages =====
+export async function createContactMessage(data: {
+  userId?: number;
+  senderName: string;
+  senderEmail: string;
+  subject: string;
+  message: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(contactMessages).values({
+    userId: data.userId ?? null,
+    senderName: data.senderName,
+    senderEmail: data.senderEmail,
+    subject: data.subject,
+    message: data.message,
+    status: "new",
+  });
+}
+
+export async function getAllContactMessages() {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(contactMessages).orderBy(sql`${contactMessages.createdAt} DESC`);
+}
+
+export async function getContactMessageById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const rows = await db.select().from(contactMessages).where(eq(contactMessages.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function replyToContactMessage(id: number, reply: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(contactMessages)
+    .set({ adminReply: reply, repliedAt: new Date(), status: "replied" })
+    .where(eq(contactMessages.id, id));
+}
+
+export async function markContactMessageRead(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(contactMessages)
+    .set({ status: "read" })
+    .where(eq(contactMessages.id, id));
+}
+
+export async function deleteContactMessage(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(contactMessages).where(eq(contactMessages.id, id));
+}
+
+export async function getUserMessages(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(contactMessages)
+    .where(eq(contactMessages.userId, userId))
+    .orderBy(sql`${contactMessages.createdAt} DESC`);
 }

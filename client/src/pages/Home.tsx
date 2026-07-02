@@ -204,16 +204,28 @@ export default function Home() {
           {isAuthenticated ? (
             <div className="flex items-center gap-3">
               {user?.role === "admin" && (
-                <button
-                  onClick={() => navigate("/admin/users")}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-xl transition-all"
-                  title="لوحة تحكم المستخدمين"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  <span>المستخدمون</span>
-                </button>
+                <div className="hidden sm:flex items-center gap-2">
+                  <button
+                    onClick={() => navigate("/admin/users")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-xl transition-all"
+                    title="لوحة تحكم المستخدمين"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <span>المستخدمون</span>
+                  </button>
+                  <button
+                    onClick={() => navigate("/admin/messages")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-600 hover:bg-purple-50 border border-purple-200 rounded-xl transition-all relative"
+                    title="صندوق الرسائل"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>الرسائل</span>
+                  </button>
+                </div>
               )}
               <button
                 onClick={() => navigate("/profile")}

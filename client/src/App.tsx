@@ -23,6 +23,9 @@ import LocalLogin from "./pages/LocalLogin";
 import LocalRegister from "./pages/LocalRegister";
 import Profile from "./pages/Profile";
 import AdminUsers from "./pages/AdminUsers";
+import ContactButton from "./components/ContactButton";
+import ContactPage from "./pages/ContactForm";
+import AdminMessages from "./pages/AdminMessages";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocalAuth } from "./hooks/useLocalAuth";
 import { trpc } from "@/lib/trpc";
@@ -176,6 +179,8 @@ function Router() {
       <Route path="/register" component={LocalRegister} />
       <Route path="/profile" component={Profile} />
       <Route path="/admin/users" component={AdminUsers} />
+      <Route path="/contact" component={() => <ContactPage mode="page" />} />
+      <Route path="/admin/messages" component={AdminMessages} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
@@ -189,6 +194,7 @@ function App() {
         <TooltipProvider>
           <Toaster position="top-center" richColors />
           <Router />
+          <ContactButton />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

@@ -313,3 +313,23 @@ export const emailVerifications = mysqlTable("email_verifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type EmailVerification = typeof emailVerifications.$inferSelect;
+
+// ===================== نظام الرسائل والتواصل =====================
+export const contactMessages = mysqlTable("contact_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  // المرسل - يمكن أن يكون مستخدم مسجل أو زائر
+  userId: int("userId"), // null إذا كان زائراً غير مسجل
+  senderName: varchar("senderName", { length: 255 }).notNull(),
+  senderEmail: varchar("senderEmail", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  message: text("message").notNull(),
+  // رد المدير
+  adminReply: text("adminReply"),
+  repliedAt: timestamp("repliedAt"),
+  // حالة الرسالة: new, read, replied
+  status: mysqlEnum("status", ["new", "read", "replied"]).default("new").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ContactMessage = typeof contactMessages.$inferSelect;
+export type InsertContactMessage = typeof contactMessages.$inferInsert;

@@ -169,6 +169,13 @@
       "when": 1783003419365,
       "tag": "0023_amused_toad_men",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1783004410558,
+      "tag": "0024_omniscient_sage",
+      "breakpoints": true
     }
   ]
 }
