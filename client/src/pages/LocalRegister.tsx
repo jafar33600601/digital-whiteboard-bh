@@ -19,12 +19,16 @@ export default function LocalRegister() {
   const [pendingEmail, setPendingEmail] = useState("");
   const [verifyCode, setVerifyCode] = useState("");
 
+  const [fallbackCode, setFallbackCode] = useState<string | null>(null);
+
   const registerMutation = trpc.localAuth.register.useMutation({
     onSuccess: (data) => {
       setPendingEmail(data.email);
       setStep("verify");
-      if (data.emailSent === false) {
-        toast.warning("تعذّر إرسال الإيميل تلقائياً. يرجى التواصل مع الإدارة للحصول على رمز التحقق.");
+      if (data.emailSent === false && data.fallbackCode) {
+        setFallbackCode(data.fallbackCode);
+        setVerifyCode(data.fallbackCode);
+        toast.info("تعذّر إرسال الإيميل - سيتم إدخال الرمز تلقائياً");
       } else {
         toast.success("تم إرسال رمز التحقق إلى بريدك الإلكتروني");
       }
@@ -50,8 +54,14 @@ export default function LocalRegister() {
   });
 
   const resendMutation = trpc.localAuth.resendVerification.useMutation({
-    onSuccess: () => {
-      toast.success("تم إعادة إرسال رمز التحقق");
+    onSuccess: (data) => {
+      if (data.emailSent === false && data.fallbackCode) {
+        setFallbackCode(data.fallbackCode);
+        setVerifyCode(data.fallbackCode);
+        toast.info("تعذّر إرسال الإيميل - سيتم إدخال الرمز تلقائياً");
+      } else {
+        toast.success("تم إعادة إرسال رمز التحقق");
+      }
     },
     onError: (err) => {
       toast.error(err.message || "حدث خطأ");
@@ -99,33 +109,49 @@ export default function LocalRegister() {
           <div className="text-center mb-8">
             {logoIcon}
             <h1 className="text-2xl font-bold text-gray-900">تأكيد البريد الإلكتروني</h1>
-            <p className="text-gray-500 mt-1">أدخل رمز التحقق المرسل إليك</p>
+            <p className="text-gray-500 mt-1">أدخل رمز التحقق</p>
           </div>
 
           <Card className="shadow-xl border-0">
             <CardHeader className="pb-4">
               <CardTitle className="text-xl text-center">رمز التحقق</CardTitle>
               <CardDescription className="text-center">
-                تم إرسال رمز مكون من 6 أرقام إلى<br />
-                <span className="font-medium text-indigo-600">{pendingEmail}</span>
+                {fallbackCode ? (
+                  <>
+                    <span className="text-amber-600 font-medium">تعذّر إرسال الإيميل - الرمز أدناه جاهز</span>
+                  </>
+                ) : (
+                  <>
+                    تم إرسال رمز مكون من 6 أرقام إلى<br />
+                    <span className="font-medium text-indigo-600">{pendingEmail}</span>
+                  </>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleVerify} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="code">رمز التحقق</Label>
-                  <Input
-                    id="code"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="123456"
-                    value={verifyCode}
-                    onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="text-center text-2xl tracking-widest font-bold"
-                    maxLength={6}
-                    disabled={verifyMutation.isPending}
-                    autoFocus
-                  />
+                  {fallbackCode ? (
+                    <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 text-center">
+                      <p className="text-xs text-amber-600 mb-1">رمز التحقق الخاص بك</p>
+                      <p className="text-4xl font-bold tracking-widest text-amber-700">{fallbackCode}</p>
+                      <p className="text-xs text-amber-500 mt-1">سيتم إدخاله تلقائياً عند الضغط على تأكيد</p>
+                    </div>
+                  ) : (
+                    <Input
+                      id="code"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="123456"
+                      value={verifyCode}
+                      onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      className="text-center text-2xl tracking-widest font-bold"
+                      maxLength={6}
+                      disabled={verifyMutation.isPending}
+                      autoFocus
+                    />
+                  )}
                 </div>
 
                 <Button

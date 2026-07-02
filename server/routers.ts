@@ -1102,8 +1102,10 @@ const localAuthRouter = router({
       ]);
       if (!emailSent) {
         console.warn(`[Auth] Email sending failed or timed out for ${input.email}, code: ${code}`);
+        // إرجاع الرمز مباشرة عند فشل الإيميل حتى يتمكن المستخدم من التسجيل
+        return { success: true, requiresVerification: true, email: input.email, emailSent: false, fallbackCode: code };
       }
-      return { success: true, requiresVerification: true, email: input.email, emailSent };
+      return { success: true, requiresVerification: true, email: input.email, emailSent: true };
     }),
 
   // التحقق من رمز البريد الإلكتروني
@@ -1150,8 +1152,9 @@ const localAuthRouter = router({
       ]);
       if (!emailSent) {
         console.warn(`[Auth] Resend email failed or timed out for ${input.email}, code: ${code}`);
+        return { success: true, emailSent: false, fallbackCode: code };
       }
-      return { success: true, emailSent };
+      return { success: true, emailSent: true };
     }),
   // تسجيل الدخول
   login: publicProcedure
