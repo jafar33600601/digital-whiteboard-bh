@@ -1071,41 +1071,30 @@ const localAuthRouter = router({
       return { isLocal };
     }),
 
-  // تسجيل حساب جديد
+  // تسجيل حساب جديد (بدون تحقق إيميل)
   register: publicProcedure
     .input(z.object({
       name: z.string().min(2).max(100),
       email: z.string().email(),
       password: z.string().min(6),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const existing = await getLocalUserByEmail(input.email);
-      if (existing && existing.isVerified) {
+      if (existing) {
         throw new TRPCError({ code: "CONFLICT", message: "البريد الإلكتروني مستخدم بالفعل" });
       }
-      // حذف الحساب غير المفعّل إذا وجد
-      if (existing && !existing.isVerified) {
-        // سيتم تحديثه لاحقاً
-      }
       const passwordHash = await bcrypt.hash(input.password, 10);
-      if (!existing) {
-        await createLocalUser(input.name, input.email, passwordHash);
-      }
-      // توليد رمز 6 أرقام
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 دقائق
-      await createEmailVerification(input.email, code, expiresAt);
-      // إرسال الإيميل بدون انتظار - لا نوقف التسجيل إذا فشل الإيميل
-      const emailSent = await Promise.race([
-        sendVerificationEmail(input.email, code, input.name),
-        new Promise<boolean>(resolve => setTimeout(() => resolve(false), 8000)),
-      ]);
-      if (!emailSent) {
-        console.warn(`[Auth] Email sending failed or timed out for ${input.email}, code: ${code}`);
-        // إرجاع الرمز مباشرة عند فشل الإيميل حتى يتمكن المستخدم من التسجيل
-        return { success: true, requiresVerification: true, email: input.email, emailSent: false, fallbackCode: code };
-      }
-      return { success: true, requiresVerification: true, email: input.email, emailSent: true };
+      const insertId = await createLocalUser(input.name, input.email, passwordHash);
+      const newUser = await getLocalUserById(insertId);
+      if (!newUser) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "خطأ غير متوقع" });
+      // تسجيل الدخول مباشرة بعد التسجيل
+      const token = await new SignJWT({ sub: String(newUser.id), type: "local" })
+        .setProtectedHeader({ alg: "HS256" })
+        .setExpirationTime("30d")
+        .sign(getJwtSecret());
+      const cookieOpts = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(LOCAL_AUTH_COOKIE, token, { ...cookieOpts, maxAge: LOCAL_AUTH_MAX_AGE });
+      return { success: true, name: newUser.name, role: newUser.role, token };
     }),
 
   // التحقق من رمز البريد الإلكتروني
@@ -1165,7 +1154,7 @@ const localAuthRouter = router({
     .mutation(async ({ ctx, input }) => {
       const user = await getLocalUserByEmail(input.email);
       if (!user) throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
-      if (!user.isVerified) throw new TRPCError({ code: "FORBIDDEN", message: "يرجى تفعيل حسابك عبر رمز التحقق المرسل لبريدك الإلكتروني" });
+      // لا يشترط التحقق من الإيميل
       const valid = await bcrypt.compare(input.password, user.passwordHash);
       if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "البريد الإلكتروني أو كلمة المرور غير صحيحة" });
       const token = await new SignJWT({ sub: String(user.id), type: "local" })

@@ -14,24 +14,12 @@ export default function LocalRegister() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  // خطوة التحقق
-  const [step, setStep] = useState<"register" | "verify">("register");
-  const [pendingEmail, setPendingEmail] = useState("");
-  const [verifyCode, setVerifyCode] = useState("");
-
-  const [fallbackCode, setFallbackCode] = useState<string | null>(null);
 
   const registerMutation = trpc.localAuth.register.useMutation({
     onSuccess: (data) => {
-      setPendingEmail(data.email);
-      setStep("verify");
-      if (data.emailSent === false && data.fallbackCode) {
-        setFallbackCode(data.fallbackCode);
-        setVerifyCode(data.fallbackCode);
-        toast.info("تعذّر إرسال الإيميل - سيتم إدخال الرمز تلقائياً");
-      } else {
-        toast.success("تم إرسال رمز التحقق إلى بريدك الإلكتروني");
-      }
+      setLocalToken(data.token);
+      toast.success(`مرحباً ${data.name}! تم إنشاء حسابك بنجاح`);
+      window.location.href = "/";
     },
     onError: (err) => {
       if (err.data?.code === "CONFLICT") {
@@ -39,32 +27,6 @@ export default function LocalRegister() {
       } else {
         toast.error(err.message || "حدث خطأ أثناء إنشاء الحساب");
       }
-    },
-  });
-
-  const verifyMutation = trpc.localAuth.verifyEmail.useMutation({
-    onSuccess: (data) => {
-      setLocalToken(data.token);
-      toast.success(`مرحباً ${data.name}! تم تفعيل حسابك بنجاح`);
-      window.location.href = "/";
-    },
-    onError: (err) => {
-      toast.error(err.message || "رمز التحقق غير صحيح");
-    },
-  });
-
-  const resendMutation = trpc.localAuth.resendVerification.useMutation({
-    onSuccess: (data) => {
-      if (data.emailSent === false && data.fallbackCode) {
-        setFallbackCode(data.fallbackCode);
-        setVerifyCode(data.fallbackCode);
-        toast.info("تعذّر إرسال الإيميل - سيتم إدخال الرمز تلقائياً");
-      } else {
-        toast.success("تم إعادة إرسال رمز التحقق");
-      }
-    },
-    onError: (err) => {
-      toast.error(err.message || "حدث خطأ");
     },
   });
 
@@ -85,15 +47,6 @@ export default function LocalRegister() {
     registerMutation.mutate({ name, email, password });
   };
 
-  const handleVerify = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (verifyCode.length !== 6) {
-      toast.error("يرجى إدخال الرمز المكون من 6 أرقام");
-      return;
-    }
-    verifyMutation.mutate({ email: pendingEmail, code: verifyCode });
-  };
-
   const logoIcon = (
     <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4 shadow-lg">
       <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,102 +54,6 @@ export default function LocalRegister() {
       </svg>
     </div>
   );
-
-  if (step === "verify") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50" dir="rtl">
-        <div className="w-full max-w-md px-4">
-          <div className="text-center mb-8">
-            {logoIcon}
-            <h1 className="text-2xl font-bold text-gray-900">تأكيد البريد الإلكتروني</h1>
-            <p className="text-gray-500 mt-1">أدخل رمز التحقق</p>
-          </div>
-
-          <Card className="shadow-xl border-0">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl text-center">رمز التحقق</CardTitle>
-              <CardDescription className="text-center">
-                {fallbackCode ? (
-                  <>
-                    <span className="text-amber-600 font-medium">تعذّر إرسال الإيميل - الرمز أدناه جاهز</span>
-                  </>
-                ) : (
-                  <>
-                    تم إرسال رمز مكون من 6 أرقام إلى<br />
-                    <span className="font-medium text-indigo-600">{pendingEmail}</span>
-                  </>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleVerify} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="code">رمز التحقق</Label>
-                  {fallbackCode ? (
-                    <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 text-center">
-                      <p className="text-xs text-amber-600 mb-1">رمز التحقق الخاص بك</p>
-                      <p className="text-4xl font-bold tracking-widest text-amber-700">{fallbackCode}</p>
-                      <p className="text-xs text-amber-500 mt-1">سيتم إدخاله تلقائياً عند الضغط على تأكيد</p>
-                    </div>
-                  ) : (
-                    <Input
-                      id="code"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="123456"
-                      value={verifyCode}
-                      onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      className="text-center text-2xl tracking-widest font-bold"
-                      maxLength={6}
-                      disabled={verifyMutation.isPending}
-                      autoFocus
-                    />
-                  )}
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700"
-                  disabled={verifyMutation.isPending || verifyCode.length !== 6}
-                >
-                  {verifyMutation.isPending ? (
-                    <span className="flex items-center gap-2 justify-center">
-                      <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                      جارٍ التحقق...
-                    </span>
-                  ) : (
-                    "تأكيد الحساب"
-                  )}
-                </Button>
-              </form>
-
-              <div className="mt-4 text-center space-y-2">
-                <p className="text-sm text-gray-500">لم تستلم الرمز؟</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => resendMutation.mutate({ email: pendingEmail })}
-                  disabled={resendMutation.isPending}
-                  className="text-indigo-600 hover:text-indigo-700"
-                >
-                  {resendMutation.isPending ? "جارٍ الإرسال..." : "إعادة إرسال الرمز"}
-                </Button>
-              </div>
-
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => setStep("register")}
-                  className="text-sm text-gray-400 hover:text-gray-600"
-                >
-                  ← العودة لتعديل البيانات
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
