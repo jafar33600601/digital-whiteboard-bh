@@ -248,39 +248,40 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
 
         {/* رابط الانضمام + QR Code */}
         {quiz?.shareCode && (
-          <div className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-2xl p-5 w-full max-w-2xl">
-            <p className="text-blue-300 text-xs mb-3 text-center">رابط انضمام الطلاب</p>
+          <div className="bg-white rounded-2xl shadow-2xl p-5 w-full max-w-2xl">
             <div className="flex flex-col sm:flex-row items-center gap-5">
+              {/* الجانب الأيسر: الرابط والكود */}
+              <div className="flex-1 w-full flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <p className="text-gray-500 text-xs font-semibold">ادخل على</p>
+                  <p className="text-indigo-700 font-extrabold text-lg tracking-wide">digitalbh.biz/join</p>
+                  <p className="text-gray-400 text-xs">أو امسح الـ QR Code</p>
+                </div>
+                <div className="bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-4 text-center">
+                  <p className="text-gray-500 text-xs mb-1 font-semibold">Game PIN:</p>
+                  <p className="text-gray-900 text-4xl font-extrabold tracking-widest" style={{ letterSpacing: '0.2em' }}>
+                    {quiz.shareCode.match(/.{1,4}/g)?.join(' ') ?? quiz.shareCode}
+                  </p>
+                </div>
+                <button
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+                  onClick={() => { navigator.clipboard.writeText(quiz.shareCode); toast.success('تم نسخ الكود'); }}
+                >
+                  نسخ الكود
+                </button>
+              </div>
               {/* QR Code */}
               <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                <div className="bg-white p-3 rounded-xl shadow-lg">
+                <div className="bg-white p-2 rounded-xl border-2 border-gray-200 shadow">
                   <QRCodeSVG
-                    value={`${window.location.origin}/quiz-join/${quiz.shareCode}`}
-                    size={130}
+                    value={`${window.location.origin}/join`}
+                    size={140}
                     bgColor="#ffffff"
                     fgColor="#1e1b4b"
                     level="M"
                   />
                 </div>
-                <p className="text-blue-300 text-xs">امسح للدخول</p>
-              </div>
-              {/* الرابط والكود */}
-              <div className="flex-1 w-full flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-white/20 rounded-lg px-3 py-2 font-mono text-xs text-white truncate">
-                    {window.location.origin}/quiz-join/{quiz.shareCode}
-                  </div>
-                  <button
-                    className="bg-blue-500 hover:bg-blue-400 text-white text-xs px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
-                    onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/quiz-join/${quiz.shareCode}`); toast.success('تم نسخ الرابط'); }}
-                  >
-                    نسخ
-                  </button>
-                </div>
-                <div className="bg-white/20 rounded-xl px-4 py-3 text-center">
-                  <p className="text-blue-300 text-xs mb-1">كود الانضمام</p>
-                  <p className="text-white text-3xl font-bold tracking-widest">{quiz.shareCode}</p>
-                </div>
+                <p className="text-gray-400 text-xs">امسح للدخول</p>
               </div>
             </div>
           </div>

@@ -1747,6 +1747,29 @@ export const appRouter = router({
   wheel: wheelRouter,
   localAuth: localAuthRouter,
   admin: adminRouter,
+
+  // بحث عن الكود في جميع أنواع الجلسات (لصفحة /join)
+  lookupCode: publicProcedure
+    .input(z.object({ code: z.string().trim().toUpperCase() }))
+    .query(async ({ input }) => {
+      const code = input.code;
+      // 1. كاهوت: quiz shareCode مع live session
+      const liveQuiz = await getQuizByShareCode(code);
+      if (liveQuiz && liveQuiz.quizMode === "live") {
+        return { type: "kahoot" as const, code, quizId: liveQuiz.id };
+      }
+      // 2. كويزيز: quizizz session shareCode
+      const quizizzSession = await getQuizizzSessionByCode(code);
+      if (quizizzSession && quizizzSession.state !== "ended") {
+        return { type: "quizizz" as const, code };
+      }
+      // 3. اختبار عادي
+      const normalQuiz = await getQuizByShareCode(code);
+      if (normalQuiz && normalQuiz.quizMode === "normal" && normalQuiz.isPublished) {
+        return { type: "quiz" as const, code };
+      }
+      return null;
+    }),
 });
 // dummy placeholder to avoid unused import warning
 export type AppRouter = typeof appRouter;

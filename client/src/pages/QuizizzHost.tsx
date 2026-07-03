@@ -283,31 +283,35 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
         {/* رابط للطلاب + QR Code */}
         <div className="bg-white rounded-2xl p-4 mb-4">
           <div className="flex flex-col sm:flex-row items-center gap-4">
+            {/* الجانب الأيسر: الرابط والكود */}
+            <div className="flex-1 w-full flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
+                <p className="text-gray-400 text-xs font-semibold">ادخل على</p>
+                <p className="text-orange-600 font-extrabold text-lg tracking-wide">digitalbh.biz/join</p>
+                <p className="text-gray-400 text-xs">أو امسح الـ QR Code</p>
+              </div>
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-xl px-4 py-4 text-center">
+                <p className="text-orange-400 text-xs mb-1 font-semibold">Game PIN:</p>
+                <p className="text-orange-600 text-4xl font-extrabold tracking-widest" style={{ letterSpacing: '0.2em' }}>
+                  {shareCode.match(/.{1,4}/g)?.join(' ') ?? shareCode}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" className="border-orange-300 text-orange-600" onClick={() => { navigator.clipboard.writeText(shareCode); }}>
+                نسخ الكود
+              </Button>
+            </div>
             {/* QR Code */}
             <div className="flex flex-col items-center gap-1 flex-shrink-0">
               <div className="bg-white border-2 border-orange-200 p-2 rounded-xl shadow">
                 <QRCodeSVG
-                  value={studentUrl}
-                  size={120}
+                  value={`${window.location.origin}/join`}
+                  size={130}
                   bgColor="#ffffff"
-                  fgColor="#7c3aed"
+                  fgColor="#ea580c"
                   level="M"
                 />
               </div>
               <p className="text-xs text-slate-400">امسح للدخول</p>
-            </div>
-            {/* الرابط والكود */}
-            <div className="flex-1 w-full flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 font-mono text-xs text-slate-600 truncate bg-slate-50 rounded-lg px-3 py-2">{studentUrl}</div>
-                <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(studentUrl); }}>
-                  نسخ
-                </Button>
-              </div>
-              <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-center">
-                <p className="text-xs text-orange-400 mb-1">كود الانضمام</p>
-                <p className="text-orange-600 text-3xl font-bold tracking-widest">{shareCode}</p>
-              </div>
             </div>
           </div>
         </div>

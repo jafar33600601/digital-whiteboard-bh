@@ -26,6 +26,7 @@ import AdminUsers from "./pages/AdminUsers";
 import ContactButton from "./components/ContactButton";
 import ContactPage from "./pages/ContactForm";
 import AdminMessages from "./pages/AdminMessages";
+import Join from "./pages/Join";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocalAuth } from "./hooks/useLocalAuth";
 import { trpc } from "@/lib/trpc";
@@ -167,6 +168,7 @@ function Router() {
       <Route path="/quiz-builder/:id" component={QuizBuilderRoute} />
       <Route path="/quiz-results/:id" component={QuizResultsRoute} />
       <Route path="/quiz/:code" component={QuizStudent} />
+      <Route path="/join" component={Join} />
       <Route path="/quiz-live/:id" component={LiveQuizHostRoute} />
       <Route path="/quiz-live-results/:id" component={LiveQuizResultsRoute} />
       <Route path="/quiz-join/:code" component={LiveQuizStudentRoute} />
