@@ -287,7 +287,7 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
             <div className="flex-1 w-full flex flex-col gap-2">
               <div className="flex flex-col gap-1">
                 <p className="text-gray-400 text-xs font-semibold">ادخل على</p>
-                <p className="text-orange-600 font-extrabold text-lg tracking-wide">digitalbh.biz/join</p>
+                <p className="text-orange-600 font-extrabold text-lg tracking-wide">{window.location.hostname}/join</p>
                 <p className="text-gray-400 text-xs">أو امسح الـ QR Code</p>
               </div>
               <div className="bg-orange-50 border-2 border-orange-200 rounded-xl px-4 py-4 text-center">
