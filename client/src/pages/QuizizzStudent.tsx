@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import confetti from "canvas-confetti";
+import { ZoomIn, X } from "lucide-react";
 
 const QUIZIZZ_BGM_URL = "/manus-storage/quizizz-bgm_c5c3e3d0.mp3";
 
@@ -50,6 +51,7 @@ export default function QuizizzStudent({ params }: { params?: { code?: string } 
   const [phase, setPhase] = useState<"join" | "playing" | "finished">("join");
   const [joinError, setJoinError] = useState<string | null>(null);
   const [isBanned, setIsBanned] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -282,7 +284,41 @@ export default function QuizizzStudent({ params }: { params?: { code?: string } 
             {currentQ.questionText}
           </p>
           {currentQ.imageUrl && (
-            <img src={currentQ.imageUrl} alt="سؤال" className="mt-3 rounded-xl max-h-40 mx-auto object-contain" />
+            <div className="relative inline-block mt-3 mx-auto">
+              <img
+                src={currentQ.imageUrl}
+                alt="سؤال"
+                className="rounded-xl max-h-40 mx-auto object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setZoomedImage(currentQ.imageUrl!)}
+              />
+              <button
+                onClick={() => setZoomedImage(currentQ.imageUrl!)}
+                className="absolute bottom-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors"
+                title="تكبير الصورة"
+              >
+                <ZoomIn size={14} />
+              </button>
+            </div>
+          )}
+          {zoomedImage && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+              onClick={() => setZoomedImage(null)}
+            >
+              <div className="relative" onClick={e => e.stopPropagation()}>
+                <img
+                  src={zoomedImage}
+                  alt="صورة مكبرة"
+                  className="max-w-[90vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+                />
+                <button
+                  onClick={() => setZoomedImage(null)}
+                  className="absolute -top-3 -right-3 bg-white text-black rounded-full p-1.5 shadow-lg hover:bg-gray-100"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
           )}
         </div>
 

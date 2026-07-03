@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { CheckCircle2, Loader2, BookOpen, Trophy, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, BookOpen, Trophy, XCircle, ZoomIn, X } from "lucide-react";
 
 const OPTION_COLORS = [
   { bg: "bg-red-500", border: "border-red-400", light: "bg-red-50", label: "أ" },
@@ -20,6 +20,7 @@ export default function QuizStudent({ params }: { params?: { code?: string } }) 
   const [studentName, setStudentName] = useState("");
   const [started, setStarted] = useState(false);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ score: number; totalQuestions: number; percentage: number } | null>(null);
 
@@ -209,8 +210,39 @@ export default function QuizStudent({ params }: { params?: { code?: string } }) 
 
                 {/* Question image */}
                 {q.imageUrl && (
-                  <img src={q.imageUrl} alt="صورة السؤال"
-                    className="w-full max-h-56 object-contain rounded-xl border border-slate-100 mb-4 bg-slate-50" />
+                  <div className="relative mb-4">
+                    <img src={q.imageUrl} alt="صورة السؤال"
+                      className="w-full max-h-56 object-contain rounded-xl border border-slate-100 bg-slate-50 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setZoomedImage(q.imageUrl!)}
+                    />
+                    <button
+                      onClick={() => setZoomedImage(q.imageUrl!)}
+                      className="absolute bottom-2 right-2 bg-black/60 text-white rounded-full p-1.5 hover:bg-black/80 transition-colors"
+                      title="تكبير الصورة"
+                    >
+                      <ZoomIn size={16} />
+                    </button>
+                  </div>
+                )}
+                {zoomedImage && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                    onClick={() => setZoomedImage(null)}
+                  >
+                    <div className="relative" onClick={e => e.stopPropagation()}>
+                      <img
+                        src={zoomedImage}
+                        alt="صورة مكبرة"
+                        className="max-w-[90vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+                      />
+                      <button
+                        onClick={() => setZoomedImage(null)}
+                        className="absolute -top-3 -right-3 bg-white text-black rounded-full p-1.5 shadow-lg hover:bg-gray-100"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {/* Options */}
