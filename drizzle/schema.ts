@@ -76,8 +76,8 @@ export const quizQuestions = mysqlTable("quiz_questions", {
   id: int("id").autoincrement().primaryKey(),
   quizId: int("quizId").notNull(),
   questionText: text("questionText").notNull(),
-  imageUrl: longtext("imageUrl"), // base64 مباشرة أو URL
-  imageKey: varchar("imageKey", { length: 512 }),
+  imageUrl: text("imageUrl"), // رابط الصورة (S3)
+  imageKey: varchar("imageKey", { length: 512 }), // مفتاح S3
   // options: JSON array of strings e.g. ["A","B","C","D"]
   options: longtext("options").notNull(),
   // correctAnswer: index 0-3
@@ -175,8 +175,8 @@ export const padletCards = mysqlTable("padlet_cards", {
   isTeacher: int("isTeacher").default(0).notNull(),
   title: varchar("title", { length: 255 }),
   content: text("content"),
-  // base64 مباشرة أو URL
-  imageUrl: longtext("imageUrl"),
+  // رابط الصورة (S3)
+  imageUrl: text("imageUrl"),
   imageKey: varchar("imageKey", { length: 512 }),
   // عدد الإعجابات
   likes: int("likes").default(0).notNull(),

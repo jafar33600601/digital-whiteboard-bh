@@ -245,9 +245,16 @@ const quizRouter = router({
       const quiz = await getQuizById(input.quizId);
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
       if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      // ضغط الصورة وتخزينها كـ base64 مباشرة في قاعدة البيانات
+      // حفظ الصورة على الـ Volume مع ضغط
+      const fs = await import("fs");
+      const pathMod = await import("path");
       const { Jimp } = await import("jimp");
       const isPng = input.mimeType === "image/png";
+      const filename = `img_${Date.now()}_${nanoid(8)}.${isPng ? "png" : "jpg"}`;
+      const uploadsDir = process.env.RAILWAY_VOLUME_MOUNT_PATH
+        ? pathMod.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "uploads")
+        : pathMod.join(process.cwd(), "uploads");
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
       const base64Data = input.imageBase64.replace(/^data:[^;]+;base64,/, "");
       const inputBuffer = Buffer.from(base64Data, "base64");
       const img = await Jimp.fromBuffer(inputBuffer);
@@ -255,9 +262,9 @@ const quizRouter = router({
       const compressedBuffer = isPng
         ? await img.getBuffer("image/png")
         : await img.getBuffer("image/jpeg", { quality: 80 });
-      const mimePrefix = isPng ? "image/png" : "image/jpeg";
-      const dataUrl = `data:${mimePrefix};base64,${compressedBuffer.toString("base64")}`;
-      return { url: dataUrl, key: "db" };
+      fs.writeFileSync(pathMod.join(uploadsDir, filename), compressedBuffer);
+      const url = `/uploads/${filename}`;
+      return { url, key: filename };
     }),
 
   // الحصول على الاختبار برمز المشاركة (للطالب)
@@ -847,9 +854,16 @@ const padletRouter = router({
     .mutation(async ({ ctx, input }) => {
       const board = await getPadletBoardById(input.boardId);
       if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      // ضغط الصورة وتخزينها كـ base64 مباشرة في قاعدة البيانات
+      // حفظ الصورة على الـ Volume مع ضغط
+      const fs = await import("fs");
+      const pathMod = await import("path");
       const { Jimp } = await import("jimp");
       const isPng = input.mimeType === "image/png";
+      const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${isPng ? "png" : "jpg"}`;
+      const uploadsDir = process.env.RAILWAY_VOLUME_MOUNT_PATH
+        ? pathMod.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "uploads")
+        : pathMod.join(process.cwd(), "uploads");
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
       const base64Data = input.imageBase64.replace(/^data:[^;]+;base64,/, "");
       const inputBuffer = Buffer.from(base64Data, "base64");
       const img = await Jimp.fromBuffer(inputBuffer);
@@ -857,9 +871,9 @@ const padletRouter = router({
       const compressedBuffer = isPng
         ? await img.getBuffer("image/png")
         : await img.getBuffer("image/jpeg", { quality: 80 });
-      const mimePrefix = isPng ? "image/png" : "image/jpeg";
-      const dataUrl = `data:${mimePrefix};base64,${compressedBuffer.toString("base64")}`;
-      return { url: dataUrl, key: "db" };
+      fs.writeFileSync(pathMod.join(uploadsDir, filename), compressedBuffer);
+      const url = `/uploads/${filename}`;
+      return { url, key: filename };
     }),
 });
 
