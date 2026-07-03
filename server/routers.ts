@@ -248,7 +248,7 @@ const quizRouter = router({
       // حفظ الصورة على الـ Volume مع ضغط
       const fs = await import("fs");
       const pathMod = await import("path");
-      const sharp = (await import("sharp")).default;
+      const { Jimp } = await import("jimp");
       const isPng = input.mimeType === "image/png";
       const filename = `img_${Date.now()}_${nanoid(8)}.${isPng ? "png" : "jpg"}`;
       const uploadsDir = process.env.RAILWAY_VOLUME_MOUNT_PATH
@@ -257,10 +257,11 @@ const quizRouter = router({
       if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
       const base64Data = input.imageBase64.replace(/^data:[^;]+;base64,/, "");
       const inputBuffer = Buffer.from(base64Data, "base64");
-      const compressedBuffer = await sharp(inputBuffer)
-        .resize({ width: 1200, withoutEnlargement: true })
-        [isPng ? "png" : "jpeg"]({ quality: 80 })
-        .toBuffer();
+      const img = await Jimp.fromBuffer(inputBuffer);
+      if (img.width > 1200) img.resize({ w: 1200 });
+      const compressedBuffer = isPng
+        ? await img.getBuffer("image/png")
+        : await img.getBuffer("image/jpeg", { quality: 80 });
       fs.writeFileSync(pathMod.join(uploadsDir, filename), compressedBuffer);
       const url = `/uploads/${filename}`;
       return { url, key: filename };
@@ -856,7 +857,7 @@ const padletRouter = router({
       // حفظ الصورة على الـ Volume مع ضغط
       const fs = await import("fs");
       const pathMod = await import("path");
-      const sharp = (await import("sharp")).default;
+      const { Jimp } = await import("jimp");
       const isPng = input.mimeType === "image/png";
       const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${isPng ? "png" : "jpg"}`;
       const uploadsDir = process.env.RAILWAY_VOLUME_MOUNT_PATH
@@ -865,10 +866,11 @@ const padletRouter = router({
       if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
       const base64Data = input.imageBase64.replace(/^data:[^;]+;base64,/, "");
       const inputBuffer = Buffer.from(base64Data, "base64");
-      const compressedBuffer = await sharp(inputBuffer)
-        .resize({ width: 1200, withoutEnlargement: true })
-        [isPng ? "png" : "jpeg"]({ quality: 80 })
-        .toBuffer();
+      const img = await Jimp.fromBuffer(inputBuffer);
+      if (img.width > 1200) img.resize({ w: 1200 });
+      const compressedBuffer = isPng
+        ? await img.getBuffer("image/png")
+        : await img.getBuffer("image/jpeg", { quality: 80 });
       fs.writeFileSync(pathMod.join(uploadsDir, filename), compressedBuffer);
       const url = `/uploads/${filename}`;
       return { url, key: filename };

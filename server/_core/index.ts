@@ -163,14 +163,15 @@ async function startServer() {
       if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
       const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, "");
       const inputBuffer = Buffer.from(base64Data, "base64");
-      // ضغط الصورة بـ Sharp
-      const sharp = (await import("sharp")).default;
+      // ضغط الصورة بـ Jimp
+      const { Jimp } = await import("jimp");
       const isPng = mimeType === "image/png";
       const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${isPng ? "png" : "jpg"}`;
-      const compressedBuffer = await sharp(inputBuffer)
-        .resize({ width: 1200, withoutEnlargement: true })
-        [isPng ? "png" : "jpeg"]({ quality: 80 })
-        .toBuffer();
+      const img = await Jimp.fromBuffer(inputBuffer);
+      if (img.width > 1200) img.resize({ w: 1200 });
+      const compressedBuffer = isPng
+        ? await img.getBuffer("image/png")
+        : await img.getBuffer("image/jpeg", { quality: 80 });
       fs.writeFileSync(path.join(UPLOADS_DIR, filename), compressedBuffer);
       const originalKB = Math.round(inputBuffer.length / 1024);
       const compressedKB = Math.round(compressedBuffer.length / 1024);
