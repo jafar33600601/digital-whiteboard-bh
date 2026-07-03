@@ -292,8 +292,8 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
               </div>
               <div className="bg-orange-50 border-2 border-orange-200 rounded-xl px-4 py-4 text-center">
                 <p className="text-orange-400 text-xs mb-1 font-semibold">Game PIN:</p>
-                <p className="text-orange-600 text-4xl font-extrabold tracking-widest" style={{ letterSpacing: '0.2em' }}>
-                  {shareCode.match(/.{1,4}/g)?.join(' ') ?? shareCode}
+                <p className="text-orange-600 text-4xl font-extrabold tracking-widest" dir="ltr" style={{ letterSpacing: '0.2em', unicodeBidi: 'embed', direction: 'ltr' }}>
+                  {shareCode}
                 </p>
               </div>
               <Button size="sm" variant="outline" className="border-orange-300 text-orange-600" onClick={() => { navigator.clipboard.writeText(shareCode); }}>

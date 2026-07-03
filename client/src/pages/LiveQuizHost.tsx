@@ -259,8 +259,8 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
                 </div>
                 <div className="bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-4 text-center">
                   <p className="text-gray-500 text-xs mb-1 font-semibold">Game PIN:</p>
-                  <p className="text-gray-900 text-4xl font-extrabold tracking-widest" style={{ letterSpacing: '0.2em' }}>
-                    {quiz.shareCode.match(/.{1,4}/g)?.join(' ') ?? quiz.shareCode}
+                  <p className="text-gray-900 text-4xl font-extrabold tracking-widest" dir="ltr" style={{ letterSpacing: '0.2em', unicodeBidi: 'embed', direction: 'ltr' }}>
+                    {quiz.shareCode}
                   </p>
                 </div>
                 <button
