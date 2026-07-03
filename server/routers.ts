@@ -1750,13 +1750,16 @@ export const appRouter = router({
 
   // بحث عن الكود في جميع أنواع الجلسات (لصفحة /join)
   lookupCode: publicProcedure
-    .input(z.object({ code: z.string().trim().toUpperCase() }))
+    .input(z.object({ code: z.string().trim() }))
     .query(async ({ input }) => {
-      const code = input.code;
-      // 1. كاهوت: quiz shareCode مع live session
+      const code = input.code.trim();
+      // 1. كاهوت: ابحث عن quiz بهذا الكود وتحقق من وجود live session نشطة
       const liveQuiz = await getQuizByShareCode(code);
-      if (liveQuiz && liveQuiz.quizMode === "live") {
-        return { type: "kahoot" as const, code, quizId: liveQuiz.id };
+      if (liveQuiz) {
+        const liveSession = await getLiveSessionByQuiz(liveQuiz.id);
+        if (liveSession && liveSession.state !== "ended") {
+          return { type: "kahoot" as const, code, quizId: liveQuiz.id };
+        }
       }
       // 2. كويزيز: quizizz session shareCode
       const quizizzSession = await getQuizizzSessionByCode(code);
@@ -1764,8 +1767,7 @@ export const appRouter = router({
         return { type: "quizizz" as const, code };
       }
       // 3. اختبار عادي
-      const normalQuiz = await getQuizByShareCode(code);
-      if (normalQuiz && normalQuiz.quizMode === "normal" && normalQuiz.isPublished) {
+      if (liveQuiz && liveQuiz.isPublished) {
         return { type: "quiz" as const, code };
       }
       return null;
