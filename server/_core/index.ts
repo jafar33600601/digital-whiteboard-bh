@@ -157,15 +157,24 @@ async function startServer() {
   app.use("/uploads", express.static(UPLOADS_DIR));
 
   // endpoint رفع الصور (base64)
-  app.post("/api/upload-image", (req, res) => {
+  app.post("/api/upload-image", async (req, res) => {
     try {
       const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64: string; mimeType?: string };
       if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
-      const ext = mimeType.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
-      const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
-      fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+      const inputBuffer = Buffer.from(base64Data, "base64");
+      // ضغط الصورة بـ Sharp
+      const sharp = (await import("sharp")).default;
+      const isPng = mimeType === "image/png";
+      const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${isPng ? "png" : "jpg"}`;
+      const compressedBuffer = await sharp(inputBuffer)
+        .resize({ width: 1200, withoutEnlargement: true })
+        [isPng ? "png" : "jpeg"]({ quality: 80 })
+        .toBuffer();
+      fs.writeFileSync(path.join(UPLOADS_DIR, filename), compressedBuffer);
+      const originalKB = Math.round(inputBuffer.length / 1024);
+      const compressedKB = Math.round(compressedBuffer.length / 1024);
+      console.log(`[Upload] ${filename}: ${originalKB}KB → ${compressedKB}KB (${Math.round((1 - compressedKB/originalKB)*100)}% saved)`);
       res.json({ url: `/uploads/${filename}`, key: filename });
     } catch (err) {
       console.error("[Upload] Error:", err);
