@@ -11,6 +11,7 @@ import {
   StopCircle, BarChart3, CheckCircle, XCircle, Clock, ZoomIn, X
 } from "lucide-react";
 import { useLiveQuizMusic } from "@/hooks/useLiveQuizMusic";
+import { QRCodeSVG } from "qrcode.react";
 
 interface LiveQuizHostProps {
   quizId: number;
@@ -245,20 +246,42 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
           <p className="text-blue-200">في انتظار انضمام الطلاب...</p>
         </div>
 
-        {/* رابط الانضمام */}
+        {/* رابط الانضمام + QR Code */}
         {quiz?.shareCode && (
-          <div className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-2xl p-4 w-full max-w-2xl">
-            <p className="text-blue-300 text-xs mb-2 text-center">رابط انضمام الطلاب</p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-white/20 rounded-lg px-3 py-2 font-mono text-sm text-white truncate">
-                {window.location.origin}/quiz-join/{quiz.shareCode}
+          <div className="bg-white/10 border border-white/20 backdrop-blur-sm rounded-2xl p-5 w-full max-w-2xl">
+            <p className="text-blue-300 text-xs mb-3 text-center">رابط انضمام الطلاب</p>
+            <div className="flex flex-col sm:flex-row items-center gap-5">
+              {/* QR Code */}
+              <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                <div className="bg-white p-3 rounded-xl shadow-lg">
+                  <QRCodeSVG
+                    value={`${window.location.origin}/quiz-join/${quiz.shareCode}`}
+                    size={130}
+                    bgColor="#ffffff"
+                    fgColor="#1e1b4b"
+                    level="M"
+                  />
+                </div>
+                <p className="text-blue-300 text-xs">امسح للدخول</p>
               </div>
-              <button
-                className="bg-blue-500 hover:bg-blue-400 text-white text-xs px-3 py-2 rounded-lg transition-colors"
-                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/quiz-join/${quiz.shareCode}`); }}
-              >
-                نسخ
-              </button>
+              {/* الرابط والكود */}
+              <div className="flex-1 w-full flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-white/20 rounded-lg px-3 py-2 font-mono text-xs text-white truncate">
+                    {window.location.origin}/quiz-join/{quiz.shareCode}
+                  </div>
+                  <button
+                    className="bg-blue-500 hover:bg-blue-400 text-white text-xs px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
+                    onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/quiz-join/${quiz.shareCode}`); toast.success('تم نسخ الرابط'); }}
+                  >
+                    نسخ
+                  </button>
+                </div>
+                <div className="bg-white/20 rounded-xl px-4 py-3 text-center">
+                  <p className="text-blue-300 text-xs mb-1">كود الانضمام</p>
+                  <p className="text-white text-3xl font-bold tracking-widest">{quiz.shareCode}</p>
+                </div>
+              </div>
             </div>
           </div>
         )}

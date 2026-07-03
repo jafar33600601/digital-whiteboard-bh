@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import confetti from "canvas-confetti";
+import { QRCodeSVG } from "qrcode.react";
 
 const QUIZIZZ_BGM_URL = "/manus-storage/quizizz-bgm_c5c3e3d0.mp3";
 
@@ -279,12 +280,36 @@ export default function QuizizzHost({ params }: { params?: { id?: string } }) {
           </div>
         </div>
 
-        {/* رابط للطلاب */}
-        <div className="bg-white rounded-2xl p-4 mb-4 flex items-center gap-3">
-          <div className="flex-1 font-mono text-sm text-slate-600 truncate">{studentUrl}</div>
-          <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(studentUrl); }}>
-            نسخ
-          </Button>
+        {/* رابط للطلاب + QR Code */}
+        <div className="bg-white rounded-2xl p-4 mb-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {/* QR Code */}
+            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+              <div className="bg-white border-2 border-orange-200 p-2 rounded-xl shadow">
+                <QRCodeSVG
+                  value={studentUrl}
+                  size={120}
+                  bgColor="#ffffff"
+                  fgColor="#7c3aed"
+                  level="M"
+                />
+              </div>
+              <p className="text-xs text-slate-400">امسح للدخول</p>
+            </div>
+            {/* الرابط والكود */}
+            <div className="flex-1 w-full flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 font-mono text-xs text-slate-600 truncate bg-slate-50 rounded-lg px-3 py-2">{studentUrl}</div>
+                <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(studentUrl); }}>
+                  نسخ
+                </Button>
+              </div>
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 text-center">
+                <p className="text-xs text-orange-400 mb-1">كود الانضمام</p>
+                <p className="text-orange-600 text-3xl font-bold tracking-widest">{shareCode}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* إحصائيات */}

@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Plus, Trash2, Image, CheckCircle2, Circle, ArrowRight,
-  Share2, Eye, EyeOff, ChevronUp, ChevronDown, Loader2, Copy
+  Share2, Eye, EyeOff, ChevronUp, ChevronDown, Loader2, Copy, QrCode
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 interface QuestionForm {
   id?: number;
@@ -300,21 +301,41 @@ export default function QuizBuilder({ params }: { params?: { id?: string } }) {
 
             {/* شريط الرابط والأزرار - يظهر فقط في وضع عادي */}
             {quizMode === "normal" && (
-            <div className="max-w-4xl mx-auto flex items-center gap-3">
-              <div className={`text-xs px-2 py-1 rounded-full font-medium ${quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                {quiz.isPublished ? "✓ منشور" : "⚠ غير منشور"}
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`text-xs px-2 py-1 rounded-full font-medium ${quiz.isPublished ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                  {quiz.isPublished ? "✓ منشور" : "⚠ غير منشور"}
+                </div>
+                <div className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 font-mono truncate">
+                  {shareUrl}
+                </div>
+                <Button size="sm" variant="outline" className="gap-1 shrink-0"
+                  onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success("تم نسخ الرابط!"); }}>
+                  <Copy className="w-4 h-4" />نسخ
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1 shrink-0"
+                  onClick={() => navigate(`/quiz-results/${quizId}`)}>
+                  النتائج
+                </Button>
               </div>
-              <div className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 font-mono truncate">
-                {shareUrl}
-              </div>
-              <Button size="sm" variant="outline" className="gap-1 shrink-0"
-                onClick={() => { navigator.clipboard.writeText(shareUrl); toast.success("تم نسخ الرابط!"); }}>
-                <Copy className="w-4 h-4" />نسخ
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1 shrink-0"
-                onClick={() => navigate(`/quiz-results/${quizId}`)}>
-                النتائج
-              </Button>
+              {/* QR Code */}
+              {quiz.isPublished && (
+                <div className="flex items-center gap-4 bg-white border border-slate-200 rounded-xl p-3">
+                  <div className="bg-white border border-slate-100 p-2 rounded-lg shadow-sm">
+                    <QRCodeSVG
+                      value={shareUrl}
+                      size={90}
+                      bgColor="#ffffff"
+                      fgColor="#4f46e5"
+                      level="M"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1">امسح الباركود للدخول المباشر</p>
+                    <p className="text-slate-600 font-mono text-sm font-bold">{quiz.shareCode}</p>
+                  </div>
+                </div>
+              )}
             </div>
             )}
             {/* زر ابدأ المباشر للكاهوت */}
