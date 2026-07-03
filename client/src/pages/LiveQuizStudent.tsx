@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Clock, Trophy, Users } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Trophy, Users, ZoomIn, X } from "lucide-react";
 import { useLiveQuizMusic } from "@/hooks/useLiveQuizMusic";
 
 interface LiveQuizStudentProps {
@@ -82,6 +82,7 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
   const [isBanned, setIsBanned] = useState(false);
   const [isStarted, setIsStarted] = useState(false);  // الاختبار بدأ ولا يمكن الانضمام
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [answerResult, setAnswerResult] = useState<{ isCorrect: boolean; points?: number } | null>(null);
   const [liveState, setLiveState] = useState<LiveState | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -358,11 +359,42 @@ export default function LiveQuizStudent({ quizId, shareCode }: LiveQuizStudentPr
               {(currentQ as { questionText: string }).questionText}
             </h2>
             {(currentQ as { imageUrl?: string | null }).imageUrl && (
-              <img
-                src={(currentQ as { imageUrl: string }).imageUrl}
-                alt="صورة السؤال"
-                className="max-h-32 object-contain mx-auto mt-3 rounded-xl"
-              />
+              <div className="relative inline-block mx-auto mt-3">
+                <img
+                  src={(currentQ as { imageUrl: string }).imageUrl}
+                  alt="صورة السؤال"
+                  className="max-h-32 object-contain rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setZoomedImage((currentQ as { imageUrl: string }).imageUrl)}
+                />
+                <button
+                  onClick={() => setZoomedImage((currentQ as { imageUrl: string }).imageUrl)}
+                  className="absolute bottom-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors"
+                  title="تكبير الصورة"
+                >
+                  <ZoomIn size={14} />
+                </button>
+              </div>
+            )}
+            {/* Modal تكبير الصورة */}
+            {zoomedImage && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                onClick={() => setZoomedImage(null)}
+              >
+                <div className="relative max-w-full max-h-full" onClick={e => e.stopPropagation()}>
+                  <img
+                    src={zoomedImage}
+                    alt="صورة مكبرة"
+                    className="max-w-[90vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+                  />
+                  <button
+                    onClick={() => setZoomedImage(null)}
+                    className="absolute -top-3 -right-3 bg-white text-black rounded-full p-1.5 shadow-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

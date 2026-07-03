@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Users, Play, SkipForward, Trophy, ChevronRight,
-  StopCircle, BarChart3, CheckCircle, XCircle, Clock
+  StopCircle, BarChart3, CheckCircle, XCircle, Clock, ZoomIn, X
 } from "lucide-react";
 import { useLiveQuizMusic } from "@/hooks/useLiveQuizMusic";
 
@@ -83,6 +83,7 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
   const [isStarted, setIsStarted] = useState(false);
   // شاشة المراكز المنفصلة بين نتائج السؤال والسؤال التالي
   const [showMidLeaderboard, setShowMidLeaderboard] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -365,11 +366,41 @@ export default function LiveQuizHost({ quizId }: LiveQuizHostProps) {
               {(currentQuestion as { questionText: string }).questionText}
             </h2>
             {(currentQuestion as { imageUrl?: string | null }).imageUrl && (
-              <img
-                src={(currentQuestion as { imageUrl: string }).imageUrl}
-                alt="صورة السؤال"
-                className="max-h-40 object-contain mx-auto rounded-xl"
-              />
+              <div className="relative inline-block mx-auto">
+                <img
+                  src={(currentQuestion as { imageUrl: string }).imageUrl}
+                  alt="صورة السؤال"
+                  className="max-h-40 object-contain rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setZoomedImage((currentQuestion as { imageUrl: string }).imageUrl)}
+                />
+                <button
+                  onClick={() => setZoomedImage((currentQuestion as { imageUrl: string }).imageUrl)}
+                  className="absolute bottom-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors"
+                  title="تكبير الصورة"
+                >
+                  <ZoomIn size={14} />
+                </button>
+              </div>
+            )}
+            {zoomedImage && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                onClick={() => setZoomedImage(null)}
+              >
+                <div className="relative" onClick={e => e.stopPropagation()}>
+                  <img
+                    src={zoomedImage}
+                    alt="صورة مكبرة"
+                    className="max-w-[90vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+                  />
+                  <button
+                    onClick={() => setZoomedImage(null)}
+                    className="absolute -top-3 -right-3 bg-white text-black rounded-full p-1.5 shadow-lg hover:bg-gray-100"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
             )}
             <div className="grid grid-cols-2 gap-3 mt-auto">
               {currentOptions.map((opt: string, i: number) => (
