@@ -137,13 +137,21 @@ function LiveQuizResultsRoute({ params }: { params?: { id?: string } }) {
 
 function LiveQuizStudentRoute({ params }: { params?: { code?: string } }) {
   const shareCode = params?.code ?? "";
-  const { data: quiz } = trpc.quiz.getQuizByCode.useQuery({ shareCode }, { enabled: !!shareCode });
-  if (!quiz) return (
+  const { data: lookup, isLoading, isError } = trpc.lookupCode.useQuery({ code: shareCode }, { enabled: !!shareCode });
+  if (isLoading) return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
       <div className="animate-spin w-10 h-10 border-4 border-white border-t-transparent rounded-full" />
     </div>
   );
-  return <LiveQuizStudent quizId={quiz.id} shareCode={shareCode} />;
+  if (isError || !lookup || lookup.type !== "kahoot") return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center" dir="rtl">
+      <div className="text-white text-center">
+        <p className="text-2xl font-bold mb-2">رمز غير صحيح أو انتهت الجلسة</p>
+        <a href="/join" className="text-indigo-300 underline">جرب مرة أخرى</a>
+      </div>
+    </div>
+  );
+  return <LiveQuizStudent quizId={lookup.quizId} shareCode={shareCode} />;
 }
 
 function PadletStudentJoinRoute({ params }: { params?: { code?: string } }) {
