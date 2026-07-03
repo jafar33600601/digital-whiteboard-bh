@@ -477,7 +477,7 @@ export async function deleteQuizSubmission(id: number) {
 export async function createQuizizzSession(quizId: number, durationMinutes: number | null): Promise<typeof quizizzSessions.$inferSelect> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const shareCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+  const shareCode = Math.floor(100000 + Math.random() * 900000).toString();
   const endsAt = durationMinutes ? new Date(Date.now() + durationMinutes * 60 * 1000) : null;
   await db.insert(quizizzSessions).values({ quizId, shareCode, state: "active", endsAt: endsAt ?? undefined });
   const [session] = await db.select().from(quizizzSessions).where(eq(quizizzSessions.shareCode, shareCode));

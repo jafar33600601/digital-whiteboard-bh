@@ -116,7 +116,7 @@ const quizRouter = router({
   createQuiz: protectedProcedure
     .input(z.object({ title: z.string().min(1).max(255) }))
     .mutation(async ({ ctx, input }) => {
-      const shareCode = nanoid(10);
+      const shareCode = Math.floor(100000 + Math.random() * 900000).toString();
       const quiz = await createQuiz({
         shareCode,
         teacherId: ctx.user.id,
