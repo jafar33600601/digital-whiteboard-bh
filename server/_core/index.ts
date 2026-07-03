@@ -10,6 +10,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { storagePut } from "../storage";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -146,17 +147,7 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  // مجلد الصور - يستخدم Railway Volume إذا كان متاحاً
-  const UPLOADS_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH
-    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "uploads")
-    : path.join(process.cwd(), "uploads");
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  }
-  // تقديم الصور المرفوعة
-  app.use("/uploads", express.static(UPLOADS_DIR));
-
-  // endpoint رفع الصور (base64)
+  // endpoint رفع الصور (base64) - يضغط ويعيد base64 للتخزين في قاعدة البيانات
   app.post("/api/upload-image", async (req, res) => {
     try {
       const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64: string; mimeType?: string };
@@ -166,17 +157,17 @@ async function startServer() {
       // ضغط الصورة بـ Jimp
       const { Jimp } = await import("jimp");
       const isPng = mimeType === "image/png";
-      const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${isPng ? "png" : "jpg"}`;
       const img = await Jimp.fromBuffer(inputBuffer);
       if (img.width > 1200) img.resize({ w: 1200 });
       const compressedBuffer = isPng
         ? await img.getBuffer("image/png")
         : await img.getBuffer("image/jpeg", { quality: 80 });
-      fs.writeFileSync(path.join(UPLOADS_DIR, filename), compressedBuffer);
       const originalKB = Math.round(inputBuffer.length / 1024);
       const compressedKB = Math.round(compressedBuffer.length / 1024);
-      console.log(`[Upload] ${filename}: ${originalKB}KB → ${compressedKB}KB (${Math.round((1 - compressedKB/originalKB)*100)}% saved)`);
-      res.json({ url: `/uploads/${filename}`, key: filename });
+      console.log(`[Upload] ${originalKB}KB → ${compressedKB}KB (${Math.round((1 - compressedKB/originalKB)*100)}% saved)`);
+      const mimePrefix = isPng ? "image/png" : "image/jpeg";
+      const dataUrl = `data:${mimePrefix};base64,${compressedBuffer.toString("base64")}`;
+      res.json({ url: dataUrl, key: "db" });
     } catch (err) {
       console.error("[Upload] Error:", err);
       res.status(500).json({ error: "Upload failed" });
