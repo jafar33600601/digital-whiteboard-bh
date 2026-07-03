@@ -13,9 +13,8 @@ export default function Join({ params }: { params?: { code?: string } }) {
   );
 
   const handleEnter = async () => {
-    const code = pin.trim();
+    const code = pin.trim().toUpperCase();
     if (!code) { setError("أدخل رمز اللعبة"); return; }
-    if (!/^\d{6}$/.test(code)) { setError("الرمز 6 أرقام"); return; }
     setError("");
     const result = await lookup.refetch();
     const data = result.data;
@@ -26,7 +25,7 @@ export default function Join({ params }: { params?: { code?: string } }) {
   };
 
   const pressDigit = (d: string) => {
-    if (pin.length < 6) { setPin(p => p + d); setError(""); }
+    if (pin.length < 10) { setPin(p => p + d); setError(""); }
   };
   const deleteLast = () => setPin(p => p.slice(0, -1));
 
@@ -55,15 +54,28 @@ export default function Join({ params }: { params?: { code?: string } }) {
           </h1>
 
           {/* PIN Display */}
-          <div className="w-full flex items-center justify-center gap-2 bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 min-h-[56px]">
+          <div
+            className="w-full flex items-center justify-center gap-2 bg-gray-50 border-2 border-gray-200 rounded-xl px-4 py-3 min-h-[56px] cursor-text"
+            onClick={() => document.getElementById('pin-input')?.focus()}
+          >
             {pin ? (
-              <span className="text-3xl font-extrabold tracking-widest text-gray-900" style={{ letterSpacing: "0.25em", fontFamily: "monospace" }}>
+              <span className="text-3xl font-extrabold tracking-widest text-gray-900" style={{ letterSpacing: "0.15em", fontFamily: "monospace" }}>
                 {pin}
               </span>
             ) : (
               <span className="text-gray-300 text-xl" style={{ fontFamily: "'Cairo', sans-serif" }}>أدخل الرمز</span>
             )}
           </div>
+          {/* حقل نصي مخفي للكتابة اليدوية */}
+          <input
+            id="pin-input"
+            type="text"
+            value={pin}
+            onChange={e => { setPin(e.target.value.toUpperCase()); setError(""); }}
+            onKeyDown={e => e.key === "Enter" && handleEnter()}
+            className="sr-only"
+            autoComplete="off"
+          />
 
           {error && (
             <p className="text-red-500 text-sm font-semibold text-center" style={{ fontFamily: "'Cairo', sans-serif" }}>{error}</p>
@@ -91,9 +103,9 @@ export default function Join({ params }: { params?: { code?: string } }) {
 
           <button
             onClick={handleEnter}
-            disabled={lookup.isFetching || pin.length !== 6}
+            disabled={lookup.isFetching || pin.length === 0}
             className="w-full py-3 rounded-xl font-extrabold text-white text-lg transition-all active:scale-95 disabled:opacity-50"
-            style={{ background: pin.length === 6 && !lookup.isFetching ? "#1a1a2e" : "#9ca3af", fontFamily: "'Cairo', sans-serif" }}
+            style={{ background: pin.length > 0 && !lookup.isFetching ? "#1a1a2e" : "#9ca3af", fontFamily: "'Cairo', sans-serif" }}
           >
             {lookup.isFetching ? "جاري البحث..." : "دخول"}
           </button>
