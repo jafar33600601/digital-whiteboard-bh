@@ -245,12 +245,19 @@ const quizRouter = router({
       const quiz = await getQuizById(input.quizId);
       if (!quiz) throw new TRPCError({ code: "NOT_FOUND" });
       if (quiz.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
+      // حفظ الصورة على الـ Volume
+      const fs = await import("fs");
+      const pathMod = await import("path");
+      const ext = input.mimeType.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+      const filename = `img_${Date.now()}_${nanoid(8)}.${ext}`;
+      const uploadsDir = process.env.RAILWAY_VOLUME_MOUNT_PATH
+        ? pathMod.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "uploads")
+        : pathMod.join(process.cwd(), "uploads");
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
       const base64Data = input.imageBase64.replace(/^data:[^;]+;base64,/, "");
-      const buffer = Buffer.from(base64Data, "base64");
-      const ext = input.mimeType.split("/")[1] || "jpg";
-      const key = `quiz-images/${ctx.user.id}/${nanoid(12)}.${ext}`;
-      const { url } = await storagePut(key, buffer, input.mimeType);
-      return { url, key };
+      fs.writeFileSync(pathMod.join(uploadsDir, filename), Buffer.from(base64Data, "base64"));
+      const url = `/uploads/${filename}`;
+      return { url, key: filename };
     }),
 
   // الحصول على الاختبار برمز المشاركة (للطالب)
@@ -840,10 +847,19 @@ const padletRouter = router({
     .mutation(async ({ ctx, input }) => {
       const board = await getPadletBoardById(input.boardId);
       if (!board || board.teacherId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-      const buffer = Buffer.from(input.imageBase64, "base64");
-      const key = `padlet/${ctx.user.id}/${Date.now()}.jpg`;
-      const { url } = await storagePut(key, buffer, input.mimeType);
-      return { url, key };
+      // حفظ الصورة على الـ Volume
+      const fs = await import("fs");
+      const pathMod = await import("path");
+      const ext = input.mimeType.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+      const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const uploadsDir = process.env.RAILWAY_VOLUME_MOUNT_PATH
+        ? pathMod.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "uploads")
+        : pathMod.join(process.cwd(), "uploads");
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+      const base64Data = input.imageBase64.replace(/^data:[^;]+;base64,/, "");
+      fs.writeFileSync(pathMod.join(uploadsDir, filename), Buffer.from(base64Data, "base64"));
+      const url = `/uploads/${filename}`;
+      return { url, key: filename };
     }),
 });
 

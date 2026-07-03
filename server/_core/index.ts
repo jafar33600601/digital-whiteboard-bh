@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import path from "path";
+import fs from "fs";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
@@ -143,6 +145,34 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // مجلد الصور - يستخدم Railway Volume إذا كان متاحاً
+  const UPLOADS_DIR = process.env.RAILWAY_VOLUME_MOUNT_PATH
+    ? path.join(process.env.RAILWAY_VOLUME_MOUNT_PATH, "uploads")
+    : path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+  // تقديم الصور المرفوعة
+  app.use("/uploads", express.static(UPLOADS_DIR));
+
+  // endpoint رفع الصور (base64)
+  app.post("/api/upload-image", (req, res) => {
+    try {
+      const { imageBase64, mimeType = "image/jpeg" } = req.body as { imageBase64: string; mimeType?: string };
+      if (!imageBase64) { res.status(400).json({ error: "imageBase64 required" }); return; }
+      const ext = mimeType.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+      const filename = `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, "");
+      const buffer = Buffer.from(base64Data, "base64");
+      fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+      res.json({ url: `/uploads/${filename}`, key: filename });
+    } catch (err) {
+      console.error("[Upload] Error:", err);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  });
+
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   // tRPC API
